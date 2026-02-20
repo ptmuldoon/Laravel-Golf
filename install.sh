@@ -47,11 +47,22 @@ read -rsp "DB password         : " DB_PASSWORD
 echo
 [[ -z "$DB_PASSWORD" ]] && error "DB password cannot be empty."
 
+read -rp "Admin name          [Admin]: " ADMIN_NAME
+ADMIN_NAME="${ADMIN_NAME:-Admin}"
+
+read -rp "Admin email         [admin@golf.com]: " ADMIN_EMAIL
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@golf.com}"
+
+read -rsp "Admin password      : " ADMIN_PASSWORD
+echo
+[[ -z "$ADMIN_PASSWORD" ]] && error "Admin password cannot be empty."
+
 echo
 info "Install directory : $INSTALL_DIR"
 info "App URL           : $APP_URL"
 info "Nginx server_name : $SERVER_NAME"
 info "Database          : $DB_DATABASE (user: $DB_USERNAME)"
+info "Admin email       : $ADMIN_EMAIL"
 echo
 read -rp "Proceed? [y/N]: " CONFIRM
 [[ "${CONFIRM,,}" != "y" ]] && echo "Aborted." && exit 0
@@ -167,6 +178,21 @@ php artisan key:generate --force
 info "Running database migrations..."
 php artisan migrate --force
 
+info "Creating super admin user..."
+php artisan tinker --execute="
+\App\Models\User::firstOrCreate(
+    ['email' => '${ADMIN_EMAIL}'],
+    [
+        'name'              => '${ADMIN_NAME}',
+        'password'          => bcrypt('${ADMIN_PASSWORD}'),
+        'is_admin'          => true,
+        'is_super_admin'    => true,
+        'email_verified_at' => now(),
+    ]
+);
+echo 'Super admin ready.';
+"
+
 info "Installing npm dependencies..."
 npm ci --silent
 
@@ -243,11 +269,9 @@ success "Nginx configured and reloaded."
 # ─── Done ─────────────────────────────────────────────────────────────────────
 echo
 echo -e "${GREEN}${BOLD}Installation complete!${RESET}"
-echo -e "  App URL  : ${CYAN}${APP_URL}${RESET}"
-echo -e "  App dir  : ${INSTALL_DIR}"
-echo -e "  PHP      : ${PHP_VER}"
-echo -e "  Database : ${DB_DATABASE} @ 127.0.0.1"
-echo
-warn "Remember to create an admin user: php artisan tinker"
-echo '  >>> \App\Models\User::create(["name"=>"Admin","email"=>"admin@example.com","password"=>bcrypt("your-password"),"is_admin"=>true]);'
+echo -e "  App URL    : ${CYAN}${APP_URL}${RESET}"
+echo -e "  App dir    : ${INSTALL_DIR}"
+echo -e "  PHP        : ${PHP_VER}"
+echo -e "  Database   : ${DB_DATABASE} @ 127.0.0.1"
+echo -e "  Admin      : ${CYAN}${ADMIN_EMAIL}${RESET} (super admin)"
 echo

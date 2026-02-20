@@ -17,9 +17,10 @@ class AdminUserSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'admin@golf.com'],
             [
-                'name' => 'Admin User',
-                'password' => Hash::make('password'),
-                'is_admin' => true,
+                'name'              => 'Admin User',
+                'password'          => Hash::make('password'),
+                'is_admin'          => true,
+                'is_super_admin'    => true,
                 'email_verified_at' => now(),
             ]
         );
