@@ -1,0 +1,373 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\HandicapHistory;
+use App\Models\League;
+use App\Models\Player;
+use App\Models\User;
+use App\Models\GolfCourse;
+use App\Models\LeagueMatch;
+use App\Models\MatchPlayer;
+use App\Services\HandicapCalculator;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+class AdminController extends Controller
+{
+    /**
+     * Show the admin dashboard
+     */
+    public function dashboard()
+    {
+        $stats = [
+            'total_leagues' => League::count(),
+            'active_leagues' => League::where('is_active', true)->count(),
+            'total_players' => Player::count(),
+            'total_courses' => GolfCourse::count(),
+            'scheduled_matches' => LeagueMatch::where('status', 'scheduled')->count(),
+            'in_progress_matches' => LeagueMatch::where('status', 'in_progress')->count(),
+        ];
+
+        $activeLeagues = League::where('is_active', true)
+            ->with('teams.players', 'golfCourse', 'matches.matchPlayers.player', 'matches.matchPlayers.substitutePlayer', 'matches.homeTeam', 'matches.awayTeam')
+            ->orderBy('start_date', 'desc')
+            ->take(5)
+            ->get();
+
+        $recentMatches = LeagueMatch::with(['homeTeam', 'awayTeam', 'league', 'result.winningTeam'])
+            ->orderBy('match_date', 'desc')
+            ->take(10)
+            ->get();
+
+        return view('admin.dashboard', compact('stats', 'activeLeagues', 'recentMatches'));
+    }
+
+    /**
+     * Show players management page
+     */
+    public function players()
+    {
+        $players = Player::withCount('rounds')
+            ->with('latestHandicap')
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->paginate(50);
+
+        return view('admin.players', compact('players'));
+    }
+
+    /**
+     * Store one or more new players
+     */
+    public function storePlayer(Request $request)
+    {
+        $validated = $request->validate([
+            'players' => 'required|array|min:1',
+            'players.*.first_name' => 'required|string|max:255',
+            'players.*.last_name' => 'required|string|max:255',
+            'players.*.email' => 'required|email|unique:players,email',
+            'players.*.phone_number' => 'nullable|string|max:20',
+        ]);
+
+        $count = 0;
+        foreach ($validated['players'] as $playerData) {
+            Player::create($playerData);
+            $count++;
+        }
+
+        $label = $count === 1 ? '1 player' : "{$count} players";
+        return redirect()->route('admin.players')->with('success', "{$label} added successfully.");
+    }
+
+    /**
+     * Show edit player form
+     */
+    public function editPlayer($id)
+    {
+        $player = Player::findOrFail($id);
+
+        return view('admin.player-edit', compact('player'));
+    }
+
+    /**
+     * Update a player's email and phone number
+     */
+    public function updatePlayer(Request $request, $id)
+    {
+        $player = Player::findOrFail($id);
+
+        $validated = $request->validate([
+            'email' => 'nullable|email|unique:players,email,' . $player->id,
+            'phone_number' => 'nullable|string|max:20',
+        ]);
+
+        $player->update($validated);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'player' => $player]);
+        }
+
+        return redirect()->route('admin.players')->with('success', "Player {$player->name} updated successfully.");
+    }
+
+    /**
+     * Delete a player
+     */
+    public function deletePlayer($id)
+    {
+        $player = Player::findOrFail($id);
+        $name = $player->name;
+
+        $player->delete();
+
+        return redirect()->route('admin.players')->with('success', "Player {$name} deleted successfully.");
+    }
+
+    /**
+     * Bulk update players' email and phone number
+     */
+    public function bulkUpdatePlayers(Request $request)
+    {
+        $validated = $request->validate([
+            'players' => 'required|array',
+            'players.*.email' => 'nullable|email',
+            'players.*.phone_number' => 'nullable|string|max:20',
+        ]);
+
+        $updated = 0;
+        foreach ($validated['players'] as $id => $data) {
+            $player = Player::find($id);
+            if (!$player) continue;
+
+            $changed = false;
+            if (array_key_exists('email', $data) && $player->email !== $data['email']) {
+                $player->email = $data['email'];
+                $changed = true;
+            }
+            if (array_key_exists('phone_number', $data) && $player->phone_number !== $data['phone_number']) {
+                $player->phone_number = $data['phone_number'];
+                $changed = true;
+            }
+            if ($changed) {
+                $player->save();
+                $updated++;
+            }
+        }
+
+        $label = $updated === 1 ? '1 player' : "{$updated} players";
+        return redirect()->route('admin.players')->with('success', "{$label} updated successfully.");
+    }
+
+    /**
+     * Show leagues management page
+     */
+    public function leagues()
+    {
+        $leagues = League::withCount(['teams', 'matches'])
+            ->with('golfCourse')
+            ->orderBy('start_date', 'desc')
+            ->paginate(20);
+
+        $leaguesWithScores = \Illuminate\Support\Facades\DB::table('match_scores')
+            ->join('match_players', 'match_scores.match_player_id', '=', 'match_players.id')
+            ->join('matches', 'match_players.match_id', '=', 'matches.id')
+            ->whereIn('matches.league_id', $leagues->pluck('id'))
+            ->distinct()
+            ->pluck('matches.league_id')
+            ->toArray();
+
+        return view('admin.leagues', compact('leagues', 'leaguesWithScores'));
+    }
+
+    /**
+     * Show users management page
+     */
+    public function users()
+    {
+        $users = User::orderBy('name')->get();
+
+        return view('admin.users', compact('users'));
+    }
+
+    /**
+     * Show create user form
+     */
+    public function createUser()
+    {
+        return view('admin.user-edit', ['user' => null]);
+    }
+
+    /**
+     * Store a new user
+     */
+    public function storeUser(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'is_admin' => 'boolean',
+        ]);
+
+        User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'is_admin' => $request->boolean('is_admin'),
+        ]);
+
+        return redirect()->route('admin.users')->with('success', 'User created successfully.');
+    }
+
+    /**
+     * Show edit user form
+     */
+    public function editUser($id)
+    {
+        $user = User::findOrFail($id);
+
+        return view('admin.user-edit', compact('user'));
+    }
+
+    /**
+     * Update a user
+     */
+    public function updateUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8|confirmed',
+            'is_admin' => 'boolean',
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        // Only super admins can change admin/role status
+        if (auth()->user()->isSuperAdmin()) {
+            if ($user->id === auth()->id()) {
+                $user->is_admin = true;
+                $user->is_super_admin = true;
+            } else {
+                $user->is_admin = $request->boolean('is_admin');
+            }
+        }
+
+        $user->save();
+
+        return redirect()->route('admin.users')->with('success', 'User updated successfully.');
+    }
+
+    /**
+     * Delete a user
+     */
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->id === auth()->id()) {
+            return redirect()->route('admin.users')->with('error', 'You cannot delete your own account.');
+        }
+
+        $user->delete();
+
+        return redirect()->route('admin.users')->with('success', 'User deleted successfully.');
+    }
+
+    /**
+     * Recompute all player handicaps from scratch
+     */
+    public function recomputeHandicaps()
+    {
+        $calculator = new HandicapCalculator();
+
+        HandicapHistory::truncate();
+
+        $players = Player::all();
+        $totalRecords = 0;
+        $playersUpdated = 0;
+
+        foreach ($players as $player) {
+            $snapshots = $calculator->computeHistoricalHandicaps($player);
+
+            if (empty($snapshots)) {
+                continue;
+            }
+
+            // Group by date — keep only the last computation per date
+            $byDate = [];
+            foreach ($snapshots as $snapshot) {
+                $byDate[$snapshot['calculation_date']] = $snapshot;
+            }
+
+            $records = [];
+            foreach ($byDate as $snapshot) {
+                $records[] = [
+                    'player_id' => $snapshot['player_id'],
+                    'calculation_date' => $snapshot['calculation_date'],
+                    'handicap_index' => $snapshot['handicap_index'],
+                    'rounds_used' => $snapshot['rounds_used'],
+                    'score_differentials' => json_encode($snapshot['score_differentials']),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            foreach (array_chunk($records, 100) as $chunk) {
+                HandicapHistory::insert($chunk);
+            }
+
+            $totalRecords += count($records);
+            $playersUpdated++;
+        }
+
+        return redirect()->route('admin.players')
+            ->with('success', "Handicaps recomputed: {$playersUpdated} players updated, {$totalRecords} handicap records created.");
+    }
+
+    /**
+     * Return schedule modal body HTML for a specific league week (AJAX).
+     */
+    public function scheduleModalWeek($leagueId, $weekNumber)
+    {
+        $league = League::with('teams.players')->findOrFail($leagueId);
+
+        $weekMatches = LeagueMatch::where('league_id', $leagueId)
+            ->where('week_number', $weekNumber)
+            ->with(['matchPlayers.player', 'matchPlayers.substitutePlayer', 'homeTeam', 'awayTeam'])
+            ->orderBy('tee_time')
+            ->get();
+
+        if ($weekMatches->isEmpty()) {
+            return response()->json(['html' => '<div style="text-align:center;padding:20px;color:#888;">No matches for this week.</div>', 'week' => (int)$weekNumber]);
+        }
+
+        $firstMatch = $weekMatches->first();
+
+        // Build team player map
+        $modalTeamPlayers = [];
+        $modalPlayerTeamId = [];
+        foreach ($league->teams as $team) {
+            $modalTeamPlayers[$team->id] = $team->players->sortBy(['first_name', 'last_name'])->values();
+            foreach ($team->players as $p) {
+                $modalPlayerTeamId[$p->id] = $team->id;
+            }
+        }
+
+        $html = view('admin.schedule-modal-body', compact(
+            'league', 'weekMatches', 'firstMatch', 'weekNumber',
+            'modalTeamPlayers', 'modalPlayerTeamId'
+        ))->render();
+
+        return response()->json(['html' => $html, 'week' => (int)$weekNumber]);
+    }
+}

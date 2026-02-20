@@ -1,0 +1,5 @@
+first_name,last_name,email,phone_number,course_name,teebox,played_at,holes_played,nine_type,hole_1,hole_2,hole_3,hole_4,hole_5,hole_6,hole_7,hole_8,hole_9,hole_10,hole_11,hole_12,hole_13,hole_14,hole_15,hole_16,hole_17,hole_18
+John,Doe,john.doe@example.com,555-0101,Pebble Beach Golf Links,Blue,2026-02-10,18,,4,5,3,6,4,5,3,5,6,5,4,3,6,4,5,3,5,6
+Jane,Smith,jane.smith@example.com,555-0102,Arrowhead Golf Course,White,2026-02-10,18,,5,6,4,3,5,4,5,4,7,6,5,4,6,5,7,3,5,5
+Bob,Johnson,bob.johnson@example.com,,Pebble Beach Golf Links,White,2026-02-10,9,front,6,5,4,7,5,6,4,5,7,,,,,,,,,
+Alice,Williams,alice.w@example.com,555-0104,Arrowhead Golf Course,Blue,2026-02-11,9,back,,,,,,,,,,6,5,3,5,4,7,4,5,5

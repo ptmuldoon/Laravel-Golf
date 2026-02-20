@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(systemctl restart:*)",
+      "Bash(service php8.4-fpm restart:*)",
+      "Bash(systemctl reload nginx:*)",
+      "Bash(service nginx reload:*)"
+    ]
+  }
+}
