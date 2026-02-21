@@ -296,19 +296,14 @@ info "Running database migrations..."
 php artisan migrate --force
 
 info "Creating super admin user..."
-php artisan tinker --execute="
-\App\Models\User::firstOrCreate(
-    ['email' => '${ADMIN_EMAIL}'],
-    [
-        'name'              => '${ADMIN_NAME}',
-        'password'          => bcrypt('${ADMIN_PASSWORD}'),
-        'is_admin'          => true,
-        'is_super_admin'    => true,
-        'email_verified_at' => now(),
-    ]
-);
-echo 'Super admin ready.';
-"
+HASHED_PASS=$(php -r "echo password_hash('${ADMIN_PASSWORD}', PASSWORD_BCRYPT);")
+mysql -uroot "$DB_DATABASE" <<SQL
+INSERT INTO users (name, email, password, is_admin, is_super_admin, email_verified_at, created_at, updated_at)
+SELECT '${ADMIN_NAME}', '${ADMIN_EMAIL}', '${HASHED_PASS}', 1, 1, NOW(), NOW(), NOW()
+FROM dual
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = '${ADMIN_EMAIL}');
+SQL
+success "Super admin ready."
 
 info "Installing npm dependencies..."
 npm ci --silent
