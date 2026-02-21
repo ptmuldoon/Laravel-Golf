@@ -78,9 +78,6 @@ APP_URL="${APP_URL:-http://localhost}"
 prompt -rp "Nginx server_name   [_]: " SERVER_NAME
 SERVER_NAME="${SERVER_NAME:-_}"
 
-prompt -rp "MySQL root password : " MYSQL_ROOT_PASS
-[[ -z "$MYSQL_ROOT_PASS" ]] && error "MySQL root password cannot be empty."
-
 prompt -rp "DB name             [golf]: " DB_DATABASE
 DB_DATABASE="${DB_DATABASE:-golf}"
 
@@ -182,7 +179,8 @@ step "Configuring MySQL"
 
 systemctl enable --now mariadb &>/dev/null
 
-mysql -uroot -p"${MYSQL_ROOT_PASS}" <<SQL
+# Use unix_socket auth (script runs as root, so no password needed)
+mysql -uroot <<SQL
 CREATE DATABASE IF NOT EXISTS \`${DB_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USERNAME}'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
 GRANT ALL PRIVILEGES ON \`${DB_DATABASE}\`.* TO '${DB_USERNAME}'@'127.0.0.1';
