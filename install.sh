@@ -138,7 +138,7 @@ info "Installing nginx, MySQL, and utilities..."
 apt-get install -y -qq nginx mariadb-server curl unzip git
 
 # Stop nginx immediately – it auto-starts with the default site after install.
-# We'll configure and start it properly at the end of the script.
+# We'll configure and start it properly below.
 systemctl stop nginx &>/dev/null || true
 
 # Node.js via NodeSource (LTS)
@@ -177,6 +177,64 @@ if $NEED_CLONE; then
     rm -rf "${INSTALL_DIR}/.git"
     success "Repository cloned to ${INSTALL_DIR}"
 fi
+
+# ─── PHP-FPM ──────────────────────────────────────────────────────────────────
+step "Configuring PHP-FPM"
+
+PHP_FPM_SOCK="/var/run/php/php${PHP_VER}-fpm.sock"
+systemctl enable --now "php${PHP_VER}-fpm" &>/dev/null
+success "PHP ${PHP_VER}-FPM running (socket: ${PHP_FPM_SOCK})"
+
+# ─── Nginx ────────────────────────────────────────────────────────────────────
+step "Configuring nginx"
+
+NGINX_CONF="/etc/nginx/sites-available/golf"
+cat > "$NGINX_CONF" <<NGINX
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name ${SERVER_NAME};
+    root ${INSTALL_DIR}/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+    charset utf-8;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:${PHP_FPM_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+NGINX
+
+# Remove all existing sites so only the golf app is served on port 80
+for site in /etc/nginx/sites-enabled/*; do
+    [[ -e "$site" ]] && rm -f "$site" && info "Removed $(basename "$site") from sites-enabled."
+done
+
+# Also remove the default site config to prevent it from ever being re-enabled
+rm -f /etc/nginx/sites-available/default
+
+ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/golf
+
+# Full restart (not reload) to ensure clean slate on fresh installs
+nginx -t && systemctl enable --now nginx && systemctl restart nginx
+success "Nginx configured and restarted."
 
 # ─── MySQL setup ──────────────────────────────────────────────────────────────
 step "Configuring MySQL"
@@ -279,64 +337,6 @@ info "Creating public storage symlink..."
 php artisan storage:link
 
 success "Laravel application configured."
-
-# ─── PHP-FPM ──────────────────────────────────────────────────────────────────
-step "Configuring PHP-FPM"
-
-PHP_FPM_SOCK="/var/run/php/php${PHP_VER}-fpm.sock"
-systemctl enable --now "php${PHP_VER}-fpm" &>/dev/null
-success "PHP ${PHP_VER}-FPM running (socket: ${PHP_FPM_SOCK})"
-
-# ─── Nginx ────────────────────────────────────────────────────────────────────
-step "Configuring nginx"
-
-NGINX_CONF="/etc/nginx/sites-available/golf"
-cat > "$NGINX_CONF" <<NGINX
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-
-    server_name ${SERVER_NAME};
-    root ${INSTALL_DIR}/public;
-
-    add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-Content-Type-Options "nosniff";
-
-    index index.php;
-    charset utf-8;
-
-    location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
-    }
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:${PHP_FPM_SOCK};
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-NGINX
-
-# Remove all existing sites so only the golf app is served on port 80
-for site in /etc/nginx/sites-enabled/*; do
-    [[ -e "$site" ]] && rm -f "$site" && info "Removed $(basename "$site") from sites-enabled."
-done
-
-# Also remove the default site config to prevent it from ever being re-enabled
-rm -f /etc/nginx/sites-available/default
-
-ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/golf
-
-# Full restart (not reload) to ensure clean slate on fresh installs
-nginx -t && systemctl enable --now nginx && systemctl restart nginx
-success "Nginx configured and restarted."
 
 # ─── Done ─────────────────────────────────────────────────────────────────────
 echo
