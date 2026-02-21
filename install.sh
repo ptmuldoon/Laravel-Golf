@@ -205,9 +205,19 @@ php artisan route:cache
 php artisan view:cache
 
 info "Setting file permissions..."
+# Ensure required storage subdirectories exist
+mkdir -p storage/app/public \
+         storage/framework/{cache,sessions,views} \
+         storage/logs
+
 chown -R "${WEB_USER}:${WEB_USER}" .
 chmod -R 755 .
 chmod -R 775 storage bootstrap/cache
+# Protect .env – contains DB credentials and app key; no world access
+chmod 640 .env
+
+info "Creating public storage symlink..."
+php artisan storage:link
 
 success "Laravel application configured."
 
