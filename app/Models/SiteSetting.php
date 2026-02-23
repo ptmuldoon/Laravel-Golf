@@ -11,9 +11,13 @@ class SiteSetting extends Model
 
     public static function get(string $key, $default = null): ?string
     {
-        $settings = Cache::remember('site_settings', 3600, function () {
-            return static::pluck('value', 'key')->toArray();
-        });
+        try {
+            $settings = Cache::remember('site_settings', 3600, function () {
+                return static::pluck('value', 'key')->toArray();
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            return $default;
+        }
 
         return $settings[$key] ?? $default;
     }
