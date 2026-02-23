@@ -290,13 +290,16 @@ set_env CACHE_STORE     "database"
 set_env QUEUE_CONNECTION "database"
 
 info "Installing Composer dependencies..."
-COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction -q
+COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts -q
 
 info "Generating application key..."
 php artisan key:generate --force
 
 info "Running database migrations..."
 php artisan migrate --force
+
+info "Discovering packages..."
+php artisan package:discover --ansi
 
 info "Creating super admin user..."
 HASHED_PASS=$(php -r 'echo password_hash($argv[1], PASSWORD_BCRYPT);' -- "$ADMIN_PASSWORD")
