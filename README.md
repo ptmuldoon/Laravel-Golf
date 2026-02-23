@@ -84,14 +84,6 @@ git clone https://github.com/ptmuldoon/Laravel-Golf.git
 cd Laravel-Golf && sudo bash install.sh
 ```
 
-**Option 2 — Run directly (private repo):**
-```bash
-export GITHUB_TOKEN="ghp_your_token_here"
-curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
-  https://raw.githubusercontent.com/ptmuldoon/Laravel-Golf/main/install.sh \
-  | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
-```
-
 The script will prompt for:
 - Install directory (default: `/var/www/html/golf`)
 - App name and URL
