@@ -1,59 +1,158 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Golf League Manager
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A full-featured golf league management application built with Laravel. Manage leagues, teams, schedules, scoring, handicaps, finances, and player communications — all from one place.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### League & Team Management
+- Create and manage multiple leagues with seasons and segments (divisions)
+- Organize teams with captain assignments and player rosters
+- Duplicate leagues for easy season-to-season setup
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Schedule Generation
+- Automated 16-week schedule generation with intelligent player pairing
+- Minimizes repeat pairings across weeks
+- Supports 2v2 team foursomes and flexible team counts
+- Manual editing: reorder weeks/matches, swap players, assign substitutes
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Match Play & Scoring
+- **Individual Match Play** — player vs player with hole-by-hole comparison
+- **Best Ball Match Play** — best score per team on each hole
+- **Team 2-Ball Match Play** — combined team scores per hole
+- **Scramble** — all team members play from best drive
+- **Stableford** — point-per-hole scoring
+- Configurable per-league point values for wins, losses, ties
+- Gross and net score modes
+- 9-hole (front/back) and 18-hole support
+- Per-hole score entry with printable scorecards (2 per page, landscape, color)
 
-## Learning Laravel
+### WHS Handicap System
+- Full World Handicap System (2024 rules) compliance
+- Score differentials: `(113 / Slope) x (Adjusted Gross - Rating)`
+- Best N of last 20 differentials (lookup table from 3-20 rounds)
+- 0.96 multiplier, adjustment table for low round counts, 54.0 cap
+- Net double bogey per-hole cap (par + 2 + strokes received)
+- 9-hole support with expected differential method (HI x 0.6)
+- Historical handicap tracking with per-round snapshots
+- Course handicap: `(HI x Slope / 113) + (Rating - Par)`
+- Hole-by-hole stroke allocation based on hole handicap ranking
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Course Management
+- Store multiple courses with tee box configurations
+- Per-hole data: par, yardage, handicap ranking, slope, rating
+- Separate 9-hole slope/rating for front and back nines
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Financial Tracking
+- Per-league fee and payout configuration (1st, 2nd, 3rd place percentages)
+- Player ledger with fee tracking
+- Par 3 contest payouts and winner tracking
 
-## Laravel Sponsors
+### Notifications
+- **Email** — weekly results, custom messages, backup delivery
+- **SMS** — weekly results and custom messages via Twilio
+- Per-player opt-in preferences for email and SMS
+- Preview before sending
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Automated Backups
+- Scheduled database backups (daily, weekly, or monthly)
+- Configurable retention policies
+- Delivery via email attachment or Google Drive
+- Manual backup download and restore from SQL upload
 
-### Premium Partners
+### Theme Customization
+- Admin-configurable primary and secondary colors
+- Applied globally across the UI and email templates
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Tech Stack
 
-## Contributing
+- **Backend:** PHP 8.2+ / Laravel 12
+- **Database:** MySQL / MariaDB
+- **Frontend:** Tailwind CSS 4, Vite
+- **SMS:** Twilio SDK
+- **Cloud Storage:** Google Drive API (for backups)
+- **Web Server:** Nginx with PHP-FPM
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Installation
 
-## Code of Conduct
+### Automated (recommended)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The install script sets up everything on a fresh Debian/Ubuntu server: PHP 8.4, Nginx, MariaDB, Node.js, Composer, and the Laravel application.
 
-## Security Vulnerabilities
+**Option 1 — Clone first:**
+```bash
+git clone https://github.com/ptmuldoon/Laravel-Golf.git
+cd Laravel-Golf && sudo bash install.sh
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+**Option 2 — Run directly (private repo):**
+```bash
+export GITHUB_TOKEN="ghp_your_token_here"
+curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/ptmuldoon/Laravel-Golf/main/install.sh \
+  | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
+```
+
+The script will prompt for:
+- Install directory (default: `/var/www/html/golf`)
+- App name and URL
+- Database name, user, and password
+- Admin name, email, and password
+
+### Manual
+
+1. Clone the repository and install dependencies:
+   ```bash
+   composer install --no-dev --optimize-autoloader
+   npm install && npm run build
+   ```
+
+2. Copy `.env.example` to `.env` and configure your database, mail, and Twilio settings.
+
+3. Generate the app key and run migrations:
+   ```bash
+   php artisan key:generate
+   php artisan migrate
+   ```
+
+4. Set permissions and create the storage symlink:
+   ```bash
+   chown -R www-data:www-data .
+   chmod -R 775 storage bootstrap/cache
+   php artisan storage:link
+   ```
+
+5. Point Nginx (or your web server) at the `public/` directory.
+
+## Environment Variables
+
+Beyond the standard Laravel variables, the app uses:
+
+| Variable | Purpose |
+|---|---|
+| `TWILIO_SID` | Twilio Account SID for SMS |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token |
+| `TWILIO_FROM_NUMBER` | Twilio sender phone number |
+
+Google Drive backup credentials are uploaded through the admin UI (service account JSON).
+
+## User Roles
+
+| Role | Access |
+|---|---|
+| **Player** | View leagues, standings, results, player profiles, own profile editing |
+| **Admin** | All player access + league/team/schedule/score/finance management, notifications |
+| **Super Admin** | All admin access + backup management, user role management, theme customization |
+
+## Handicap Recalculation
+
+To recalculate handicaps for all players (or a specific player):
+```bash
+php artisan handicaps:calculate
+php artisan handicaps:calculate --player=5
+php artisan handicaps:calculate --historical
+php artisan handicaps:calculate --fresh
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is proprietary software.
