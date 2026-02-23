@@ -313,6 +313,7 @@
         <div class="submenu">
             <a href="{{ route('admin.import.scores.form') }}" class="submenu-link">📥 Import Scores</a>
             <a href="{{ route('admin.scorecard.create') }}" class="submenu-link">📝 Enter Scorecard</a>
+            <a href="{{ route('admin.players.exportCsv') }}" class="submenu-link">📊 Export Scores CSV</a>
             <button type="button" onclick="document.getElementById('add-player-form').style.display = document.getElementById('add-player-form').style.display === 'none' ? 'block' : 'none'" class="submenu-link">➕ Add Player</button>
             <form action="{{ route('admin.players.recomputeHandicaps') }}" method="POST" style="display: inline;" onsubmit="return confirmRecompute(this)">
                 @csrf

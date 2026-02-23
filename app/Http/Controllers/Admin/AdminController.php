@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HandicapHistory;
 use App\Models\League;
 use App\Models\Player;
+use App\Models\Round;
 use App\Models\User;
 use App\Models\GolfCourse;
 use App\Models\LeagueMatch;
@@ -13,6 +14,7 @@ use App\Models\MatchPlayer;
 use App\Services\HandicapCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminController extends Controller
 {
@@ -357,6 +359,68 @@ class AdminController extends Controller
 
         return redirect()->route('admin.players')
             ->with('success', "Handicaps recomputed: {$playersUpdated} players updated, {$totalRecords} handicap records created.");
+    }
+
+    /**
+     * Export all player scores to CSV.
+     */
+    public function exportPlayerScoresCsv(): StreamedResponse
+    {
+        $rounds = Round::with(['player', 'golfCourse', 'scores' => function ($q) {
+                $q->orderBy('hole_number');
+            }])
+            ->orderBy('played_at')
+            ->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="player-scores-' . now()->format('Y-m-d') . '.csv"',
+        ];
+
+        return new StreamedResponse(function () use ($rounds) {
+            $handle = fopen('php://output', 'w');
+
+            // BOM for Excel UTF-8 compatibility
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            // Header row
+            $header = [
+                'First Name', 'Last Name', 'Email',
+                'Course', 'Teebox', 'Date Played', 'Holes Played',
+            ];
+            for ($i = 1; $i <= 18; $i++) {
+                $header[] = "Hole {$i}";
+            }
+            $header[] = 'Total Strokes';
+            fputcsv($handle, $header);
+
+            foreach ($rounds as $round) {
+                $row = [
+                    $round->player->first_name ?? '',
+                    $round->player->last_name ?? '',
+                    $round->player->email ?? '',
+                    $round->golfCourse->name ?? '',
+                    $round->teebox ?? '',
+                    $round->played_at ?? '',
+                    $round->holes_played ?? 18,
+                ];
+
+                $scoresByHole = $round->scores->keyBy('hole_number');
+                $total = 0;
+                for ($i = 1; $i <= 18; $i++) {
+                    $strokes = $scoresByHole->has($i) ? $scoresByHole[$i]->strokes : '';
+                    $row[] = $strokes;
+                    if ($strokes !== '') {
+                        $total += $strokes;
+                    }
+                }
+                $row[] = $total > 0 ? $total : '';
+
+                fputcsv($handle, $row);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
     }
 
     /**

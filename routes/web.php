@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
 Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/players', [AdminController::class, 'players'])->name('players');
+    Route::get('/players/export-csv', [AdminController::class, 'exportPlayerScoresCsv'])->name('players.exportCsv');
     Route::get('/players/{id}/edit', [AdminController::class, 'editPlayer'])->name('players.edit');
     Route::post('/players', [AdminController::class, 'storePlayer'])->name('players.store');
     Route::put('/players/{id}', [AdminController::class, 'updatePlayer'])->name('players.update');
