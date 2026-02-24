@@ -81,11 +81,13 @@
         .scorecard-table {
             background: white;
             border-radius: 12px;
-            overflow: hidden;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         table {
             width: 100%;
+            min-width: 500px;
             border-collapse: collapse;
         }
         thead {
@@ -166,6 +168,44 @@
             font-size: 1.8em;
             font-weight: bold;
             color: var(--primary-color);
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .scorecard-header {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.3em;
+            }
+            .round-info {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 10px;
+            }
+            .info-item {
+                padding: 10px;
+            }
+            .info-value {
+                font-size: 1em;
+            }
+            th, td {
+                padding: 8px 4px;
+                font-size: 0.85em;
+            }
+            .summary {
+                padding: 15px;
+            }
+            .summary-stats {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            .stat-box {
+                padding: 10px;
+            }
+            .stat-value {
+                font-size: 1.4em;
+            }
         }
     </style>
 </head>

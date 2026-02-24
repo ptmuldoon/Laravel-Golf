@@ -225,7 +225,11 @@
                             <a href="{{ route('admin.leagues.edit', $league->id) }}" class="btn-small btn-edit-small">
                                 ✏️ Edit
                             </a>
-                            @if(in_array($league->id, $leaguesWithScores))
+                            @if($league->is_active && in_array($league->id, $leaguesWithScores))
+                                <span class="btn-small" style="background: #ccc; color: #666; cursor: not-allowed;" title="Cannot delete — active league with scores recorded">
+                                    🗑️ Delete
+                                </span>
+                            @elseif(in_array($league->id, $leaguesWithScores))
                                 <span class="btn-small" style="background: #ccc; color: #666; cursor: not-allowed;" title="Cannot delete — scores have been recorded">
                                     🗑️ Delete
                                 </span>

@@ -250,7 +250,9 @@
                                 <a href="{{ route('admin.leagues.edit', $league->id) }}" style="color: #28a745; text-decoration: none; font-weight: 600; margin-right: 10px;">
                                     Edit
                                 </a>
-                                @if(in_array($league->id, $leaguesWithScores))
+                                @if($league->is_active && in_array($league->id, $leaguesWithScores))
+                                    <span style="color: #ccc; font-weight: 600; cursor: not-allowed;" title="Cannot delete — active league with scores recorded">Delete</span>
+                                @elseif(in_array($league->id, $leaguesWithScores))
                                     <span style="color: #ccc; font-weight: 600; cursor: not-allowed;" title="Cannot delete — scores have been recorded">Delete</span>
                                 @else
                                     <form action="{{ route('admin.leagues.destroy', $league->id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete {{ $league->name }}? This will delete all teams and matches!');">

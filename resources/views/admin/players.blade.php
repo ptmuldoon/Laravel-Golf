@@ -573,18 +573,28 @@
             btn.textContent = 'Saving...';
             btn.disabled = true;
 
-            fetch('/admin/players/' + playerId, {
+            fetch('{{ url("admin/players") }}/' + playerId, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ email: email, phone_number: phone, email_enabled: emailEnabled, sms_enabled: smsEnabled })
+                body: JSON.stringify({ email: email || null, phone_number: phone || null, email_enabled: emailEnabled, sms_enabled: smsEnabled })
             })
             .then(function(response) {
                 if (!response.ok) {
-                    return response.json().then(function(data) { throw data; });
+                    return response.text().then(function(text) {
+                        try {
+                            var data = JSON.parse(text);
+                            throw data;
+                        } catch (e) {
+                            if (e instanceof SyntaxError) {
+                                throw { message: 'Server error (HTTP ' + response.status + '). Please reload the page and try again.' };
+                            }
+                            throw e;
+                        }
+                    });
                 }
                 return response.json();
             })
@@ -614,6 +624,8 @@
                 var msg = 'Save failed.';
                 if (err && err.errors) {
                     msg = Object.values(err.errors).flat().join('\n');
+                } else if (err && err.message) {
+                    msg = err.message;
                 }
                 alert(msg);
             })

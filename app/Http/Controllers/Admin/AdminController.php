@@ -43,7 +43,15 @@ class AdminController extends Controller
             ->take(10)
             ->get();
 
-        return view('admin.dashboard', compact('stats', 'activeLeagues', 'recentMatches'));
+        $leaguesWithScores = \Illuminate\Support\Facades\DB::table('match_scores')
+            ->join('match_players', 'match_scores.match_player_id', '=', 'match_players.id')
+            ->join('matches', 'match_players.match_id', '=', 'matches.id')
+            ->whereIn('matches.league_id', $activeLeagues->pluck('id'))
+            ->distinct()
+            ->pluck('matches.league_id')
+            ->toArray();
+
+        return view('admin.dashboard', compact('stats', 'activeLeagues', 'recentMatches', 'leaguesWithScores'));
     }
 
     /**
@@ -102,16 +110,16 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'email' => 'nullable|email|unique:players,email,' . $player->id,
-            'phone_number' => 'nullable|string|max:20',
+            'phone_number' => 'nullable|string|max:50',
             'email_enabled' => 'nullable',
             'sms_enabled' => 'nullable',
         ]);
 
         if ($request->has('email_enabled')) {
-            $validated['email_enabled'] = filter_var($request->input('email_enabled'), FILTER_VALIDATE_BOOLEAN);
+            $validated['email_enabled'] = $request->boolean('email_enabled');
         }
         if ($request->has('sms_enabled')) {
-            $validated['sms_enabled'] = filter_var($request->input('sms_enabled'), FILTER_VALIDATE_BOOLEAN);
+            $validated['sms_enabled'] = $request->boolean('sms_enabled');
         }
 
         $player->update($validated);

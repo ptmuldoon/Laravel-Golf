@@ -204,6 +204,11 @@ class LeagueController extends Controller
             });
         })->exists();
 
+        if ($league->is_active && $hasScores) {
+            return redirect()->back()
+                ->with('error', "Cannot delete '{$league->name}' because it is an active league with scores recorded.");
+        }
+
         if ($hasScores) {
             return redirect()->back()
                 ->with('error', "Cannot delete '{$league->name}' because scores have been recorded. Remove all scores first.");

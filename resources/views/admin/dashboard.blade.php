@@ -606,13 +606,19 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <form action="{{ route('admin.leagues.destroy', $league->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the league \'{{ addslashes($league->name) }}\'? This cannot be undone.');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;">
+                                    @if(in_array($league->id, $leaguesWithScores))
+                                        <span class="btn" style="background: #ccc; color: #666; padding: 6px 12px; font-size: 0.85em; cursor: not-allowed;" title="Cannot delete — active league with scores recorded">
                                             Delete
-                                        </button>
-                                    </form>
+                                        </span>
+                                    @else
+                                        <form action="{{ route('admin.leagues.destroy', $league->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete the league \'{{ addslashes($league->name) }}\'? This cannot be undone.');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85em;">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -626,9 +632,9 @@
         <div class="content-section" style="position: relative; z-index: 1;">
             <h2 class="section-title" style="margin-bottom: 0; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                 <span>📅 Recent Matches</span>
-                <span style="cursor: pointer; user-select: none; color: #e67e22; font-size: 0.6em;" onclick="toggleSection('recentMatchesBody')" id="toggle-recentMatchesBody">&#9660;</span>
+                <span style="cursor: pointer; user-select: none; color: #e67e22; font-size: 0.6em;" onclick="toggleSection('recentMatchesBody')" id="toggle-recentMatchesBody">&#9650;</span>
             </h2>
-            <div id="recentMatchesBody" style="display: none;">
+            <div id="recentMatchesBody">
             @if($recentMatches->isEmpty())
                 <div class="empty-state">No matches scheduled</div>
             @else
