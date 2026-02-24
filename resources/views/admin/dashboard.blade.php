@@ -188,24 +188,20 @@
         }
         .quick-links-menu {
             display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            padding-top: 4px;
-            background: transparent;
-            z-index: 100;
+            position: fixed;
+            z-index: 9999;
             min-width: 170px;
             max-height: 70vh;
             overflow-y: auto;
+        }
+        .quick-links-menu.open {
+            display: block;
         }
         .quick-links-menu-inner {
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             overflow: hidden;
-        }
-        .quick-links:hover .quick-links-menu {
-            display: block;
         }
         .quick-links-menu-inner a {
             display: block;
@@ -387,6 +383,9 @@
         }
         .side.away .modal-sub-search .results { right: 0; }
         .side.home .modal-sub-search .results { left: 0; }
+        .active-leagues-wrapper {
+            overflow: visible;
+        }
         .empty-state {
             text-align: center;
             padding: 40px;
@@ -460,6 +459,16 @@
             .navbar-links form button { width: 100%; text-align: left; padding: 10px 12px; border-radius: 4px; }
             .container { padding: 16px; }
             .content-section { padding: 16px; }
+            .active-leagues-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .active-leagues-wrapper table {
+                min-width: 600px;
+            }
+            .active-leagues-wrapper td:last-child {
+                white-space: nowrap;
+            }
             .schedule-modal-body { padding: 12px 14px; }
             .modal-match-row { flex-direction: column; align-items: flex-start; gap: 6px; }
             .modal-match-row .players-area { width: 100%; }
@@ -545,7 +554,7 @@
                     <a href="{{ route('admin.leagues.create') }}" class="btn btn-primary" style="margin-top: 15px;">Create League</a>
                 </div>
             @else
-                <div style="overflow: visible;">
+                <div class="active-leagues-wrapper">
                 <table>
                     <thead>
                         <tr>
@@ -581,7 +590,7 @@
                                         Manage
                                     </a>
                                     <div class="quick-links">
-                                        <button class="quick-links-btn">Quick Links ▾</button>
+                                        <button class="quick-links-btn" onclick="toggleQuickLinks(event, this)">Quick Links ▾</button>
                                         <div class="quick-links-menu">
                                             <div class="quick-links-menu-inner">
                                                 @if($scorecardWeek)
@@ -614,8 +623,12 @@
         </div>
 
         <!-- Recent Matches -->
-        <div class="content-section">
-            <h2 class="section-title">📅 Recent Matches</h2>
+        <div class="content-section" style="position: relative; z-index: 1;">
+            <h2 class="section-title" style="margin-bottom: 0; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <span>📅 Recent Matches</span>
+                <span style="cursor: pointer; user-select: none; color: #e67e22; font-size: 0.6em;" onclick="toggleSection('recentMatchesBody')" id="toggle-recentMatchesBody">&#9660;</span>
+            </h2>
+            <div id="recentMatchesBody" style="display: none;">
             @if($recentMatches->isEmpty())
                 <div class="empty-state">No matches scheduled</div>
             @else
@@ -673,6 +686,7 @@
                 </table>
                 </div>
             @endif
+            </div>
         </div>
     </div>
 
@@ -734,6 +748,49 @@
     <script>
         var baseUrl = @json(url('/'));
         var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        function toggleSection(sectionId) {
+            var body = document.getElementById(sectionId);
+            var toggle = document.getElementById('toggle-' + sectionId);
+            if (body.style.display === 'none') {
+                body.style.display = '';
+                toggle.innerHTML = '&#9650;';
+            } else {
+                body.style.display = 'none';
+                toggle.innerHTML = '&#9660;';
+            }
+        }
+
+        function toggleQuickLinks(e, btn) {
+            e.stopPropagation();
+            var menu = btn.nextElementSibling;
+            var wasOpen = menu.classList.contains('open');
+
+            // Close all open menus first
+            document.querySelectorAll('.quick-links-menu.open').forEach(function(m) {
+                m.classList.remove('open');
+            });
+
+            if (!wasOpen) {
+                var rect = btn.getBoundingClientRect();
+                menu.style.top = rect.bottom + 4 + 'px';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+                menu.style.left = 'auto';
+                menu.classList.add('open');
+            }
+        }
+
+        // Close quick links when clicking anywhere else or scrolling
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.quick-links-menu.open').forEach(function(m) {
+                m.classList.remove('open');
+            });
+        });
+        window.addEventListener('scroll', function() {
+            document.querySelectorAll('.quick-links-menu.open').forEach(function(m) {
+                m.classList.remove('open');
+            });
+        }, true);
 
         function openScheduleModal(leagueId) {
             var modal = document.getElementById('scheduleModal-' + leagueId);
