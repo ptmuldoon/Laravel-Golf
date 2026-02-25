@@ -362,12 +362,14 @@
                 <a href="{{ route('admin.leagues.scoring', $league->id) }}" class="btn btn-primary">
                     Scoring Settings
                 </a>
-                <a href="{{ route('admin.leagues.emailResults', $league->id) }}" class="btn btn-success">
-                    Email Results
-                </a>
-                <a href="{{ route('admin.leagues.emailMessage', $league->id) }}" class="btn btn-success">
-                    Email Message
-                </a>
+                @if($emailConfigured)
+                    <a href="{{ route('admin.leagues.emailResults', $league->id) }}" class="btn btn-success">
+                        Email Results
+                    </a>
+                    <a href="{{ route('admin.leagues.emailMessage', $league->id) }}" class="btn btn-success">
+                        Email Message
+                    </a>
+                @endif
                 <a href="{{ route('admin.leagues.holeStats', $league->id) }}" class="btn btn-primary">
                     Hole Stats
                 </a>

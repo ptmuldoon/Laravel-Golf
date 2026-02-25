@@ -2,25 +2,27 @@
 
 namespace App\Services;
 
-use Twilio\Rest\Client;
+use Vonage\Client;
+use Vonage\Client\Credentials\Basic;
+use Vonage\SMS\Message\SMS;
 use Illuminate\Support\Facades\Log;
 
-class TwilioService
+class SmsService
 {
     protected Client $client;
     protected string $fromNumber;
 
     public function __construct()
     {
-        $sid = config('services.twilio.sid');
-        $token = config('services.twilio.token');
-        $this->fromNumber = config('services.twilio.from');
+        $apiKey = config('services.vonage.key');
+        $apiSecret = config('services.vonage.secret');
+        $this->fromNumber = config('services.vonage.sms_from');
 
-        if (!$sid || !$token || !$this->fromNumber) {
-            throw new \Exception('Twilio credentials not configured. Set TWILIO_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER in .env');
+        if (!$apiKey || !$apiSecret || !$this->fromNumber) {
+            throw new \Exception('Vonage credentials not configured. Set VONAGE_KEY, VONAGE_SECRET, and VONAGE_SMS_FROM in .env');
         }
 
-        $this->client = new Client($sid, $token);
+        $this->client = new Client(new Basic($apiKey, $apiSecret));
     }
 
     /**
@@ -28,15 +30,14 @@ class TwilioService
      */
     public function sendSms(string $to, string $body): string
     {
-        $message = $this->client->messages->create(
-            $to,
-            [
-                'from' => $this->fromNumber,
-                'body' => $body,
-            ]
-        );
+        $response = $this->client->sms()->send(new SMS($to, $this->fromNumber, $body));
+        $message = $response->current();
 
-        return $message->sid;
+        if ($message->getStatus() != 0) {
+            throw new \Exception('SMS failed: ' . $message->getErrorText());
+        }
+
+        return $message->getMessageId();
     }
 
     /**

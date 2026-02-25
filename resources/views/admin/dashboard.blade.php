@@ -217,8 +217,39 @@
             background: var(--primary-light);
             color: var(--primary-color);
         }
-        .quick-links-menu-inner a + a {
+        .quick-links-menu-inner a + a,
+        .quick-links-menu-inner .quick-link-disabled + a,
+        .quick-links-menu-inner a + .quick-link-disabled,
+        .quick-links-menu-inner .quick-link-disabled + .quick-link-disabled {
             border-top: 1px solid #f0f0f0;
+        }
+        .quick-links-menu-inner .quick-link-disabled {
+            display: block;
+            padding: 10px 16px;
+            color: #aaa;
+            font-size: 0.85em;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: not-allowed;
+            position: relative;
+        }
+        .quick-link-disabled .quick-link-tooltip {
+            display: none;
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #333;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            z-index: 10000;
+            margin-right: 6px;
+        }
+        .quick-link-disabled:hover .quick-link-tooltip {
+            display: block;
         }
         .schedule-modal-overlay {
             display: none;
@@ -598,10 +629,14 @@
                                                     <a href="{{ route('admin.leagues.printScorecards', [$league->id, $scorecardWeek]) }}" target="_blank">Print Scorecards</a>
                                                 @endif
                                                 <a href="{{ route('admin.leagues.scores', $league->id) }}?week={{ $scorecardWeek }}">Post Scores</a>
-                                                <a href="{{ route('admin.leagues.emailResults', $league->id) }}">Email Results</a>
-                                                <a href="{{ route('admin.leagues.emailMessage', $league->id) }}">Email Message</a>
-                                                <a href="{{ route('admin.leagues.smsResults', $league->id) }}">SMS Results</a>
-                                                <a href="{{ route('admin.leagues.smsMessage', $league->id) }}">SMS Message</a>
+                                                @if($emailConfigured)
+                                                    <a href="{{ route('admin.leagues.emailResults', $league->id) }}">Email Results</a>
+                                                    <a href="{{ route('admin.leagues.emailMessage', $league->id) }}">Email Message</a>
+                                                @endif
+                                                @if($smsConfigured)
+                                                    <a href="{{ route('admin.leagues.smsResults', $league->id) }}">SMS Results</a>
+                                                    <a href="{{ route('admin.leagues.smsMessage', $league->id) }}">SMS Message</a>
+                                                @endif
                                                 <a href="{{ route('admin.leagues.finances', $league->id) }}">Finances</a>
                                             </div>
                                         </div>

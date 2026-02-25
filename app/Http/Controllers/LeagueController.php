@@ -21,7 +21,7 @@ use App\Models\Score;
 use App\Models\Team;
 use App\Services\HandicapCalculator;
 use App\Services\MatchPlayCalculator;
-use App\Services\TwilioService;
+use App\Services\SmsService;
 use Database\Seeders\ScoringSettingsSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -148,7 +148,10 @@ class LeagueController extends Controller
             ->get()
             ->groupBy('week_number');
 
-        return view('leagues.show', compact('league', 'teams', 'matchesByWeek', 'standingsBySegment', 'weekSegmentMap', 'par3WinnersByWeek'));
+        $emailConfigured = !empty(config('mail.mailers.smtp.host')) && !empty(config('mail.mailers.smtp.username'));
+        $smsConfigured = !empty(config('services.vonage.key')) && !empty(config('services.vonage.secret')) && !empty(config('services.vonage.sms_from'));
+
+        return view('leagues.show', compact('league', 'teams', 'matchesByWeek', 'standingsBySegment', 'weekSegmentMap', 'par3WinnersByWeek', 'emailConfigured', 'smsConfigured'));
     }
 
     /**
@@ -1941,7 +1944,7 @@ class LeagueController extends Controller
         $league = League::with(['teams.players', 'golfCourse', 'segments.teams'])->findOrFail($leagueId);
 
         if ($testPhone) {
-            $formatted = TwilioService::formatPhoneNumber($testPhone);
+            $formatted = SmsService::formatPhoneNumber($testPhone);
             if (!$formatted) {
                 return redirect()->route('admin.leagues.smsResults', $leagueId)
                     ->withErrors(['error' => 'Invalid phone number format.']);
@@ -1953,7 +1956,7 @@ class LeagueController extends Controller
                 ->where('phone_number', '!=', '')
                 ->where('sms_enabled', true)
                 ->pluck('phone_number')
-                ->map(fn($p) => TwilioService::formatPhoneNumber($p))
+                ->map(fn($p) => SmsService::formatPhoneNumber($p))
                 ->filter()
                 ->unique()
                 ->values()
@@ -1969,8 +1972,8 @@ class LeagueController extends Controller
         $smsText = $this->buildSmsResultsText($league, $weekNumber, $data);
 
         try {
-            $twilio = new TwilioService();
-            $result = $twilio->sendBulkSms($recipients, $smsText);
+            $sms = new SmsService();
+            $result = $sms->sendBulkSms($recipients, $smsText);
 
             $successMsg = $testPhone
                 ? "Test SMS for Week {$weekNumber} results sent to {$testPhone}!"
@@ -2019,7 +2022,7 @@ class LeagueController extends Controller
         $testPhone = $request->input('test_phone');
 
         if ($testPhone) {
-            $formatted = TwilioService::formatPhoneNumber($testPhone);
+            $formatted = SmsService::formatPhoneNumber($testPhone);
             if (!$formatted) {
                 return redirect()->route('admin.leagues.smsMessage', $leagueId)
                     ->withErrors(['error' => 'Invalid phone number format.']);
@@ -2031,7 +2034,7 @@ class LeagueController extends Controller
                 ->where('phone_number', '!=', '')
                 ->where('sms_enabled', true)
                 ->pluck('phone_number')
-                ->map(fn($p) => TwilioService::formatPhoneNumber($p))
+                ->map(fn($p) => SmsService::formatPhoneNumber($p))
                 ->filter()
                 ->unique()
                 ->values()
@@ -2046,8 +2049,8 @@ class LeagueController extends Controller
         $body = $league->name . ': ' . $validated['message_body'];
 
         try {
-            $twilio = new TwilioService();
-            $result = $twilio->sendBulkSms($recipients, $body);
+            $sms = new SmsService();
+            $result = $sms->sendBulkSms($recipients, $body);
 
             $successMsg = $testPhone
                 ? "Test SMS sent to {$testPhone}!"

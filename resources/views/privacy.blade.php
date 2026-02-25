@@ -69,7 +69,7 @@
             </ul>
 
             <h3>SMS &amp; Email Communications</h3>
-            <p>League administrators may send SMS messages or emails to players regarding results, schedules, or league announcements. SMS is sent via Twilio and email via your configured mail provider. Message and data rates may apply. Players can request removal of their phone number from their league administrator at any time.</p>
+            <p>League administrators may send SMS messages or emails to players regarding results, schedules, or league announcements. SMS is sent via Vonage and email via your configured mail provider. Message and data rates may apply. Players can request removal of their phone number from their league administrator at any time.</p>
 
             <h3>Data Storage &amp; Security</h3>
             <p>All data is stored on the server where this application is hosted. Database backups may optionally be sent via email or uploaded to Google Drive if configured by the site administrator. Passwords are hashed and never stored in plain text.</p>
@@ -77,7 +77,7 @@
             <h3>Third-Party Services</h3>
             <p>This application may integrate with the following third-party services when configured:</p>
             <ul>
-                <li><strong>Twilio</strong> for sending SMS messages.</li>
+                <li><strong>Vonage</strong> for sending SMS messages.</li>
                 <li><strong>Google Drive</strong> for backup storage.</li>
                 <li><strong>SMTP email provider</strong> for sending emails.</li>
             </ul>

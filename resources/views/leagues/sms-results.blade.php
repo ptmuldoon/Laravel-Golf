@@ -156,7 +156,7 @@
                             .then(function(r) { return r.json(); })
                             .then(function(data) {
                                 document.getElementById('sms-preview').textContent = data.text;
-                                var cost = (data.segments * {{ $playersWithPhone }} * 0.0079).toFixed(2);
+                                var cost = (data.segments * {{ $playersWithPhone }} * 0.0077).toFixed(2);
                                 document.getElementById('sms-info').innerHTML =
                                     data.length + ' chars &bull; ' + data.segments + ' SMS segment(s) per recipient'
                                     + ' &bull; Est. cost: $' + cost + ' for {{ $playersWithPhone }} recipients';

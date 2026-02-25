@@ -160,7 +160,7 @@
             var body = document.getElementById('message_body');
             var totalLen = leaguePrefix.length + body.value.length;
             var segments = Math.ceil(totalLen / 160) || 1;
-            var cost = (segments * recipientCount * 0.0079).toFixed(2);
+            var cost = (segments * recipientCount * 0.0077).toFixed(2);
             document.getElementById('char-count').innerHTML =
                 totalLen + '/1600 chars &bull; ' + segments + ' SMS segment(s) &bull; Est. $' + cost + ' for ' + recipientCount + ' recipients';
         }

@@ -39,10 +39,10 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
 
-    'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_AUTH_TOKEN'),
-        'from' => env('TWILIO_FROM_NUMBER'),
+    'vonage' => [
+        'key' => env('VONAGE_KEY'),
+        'secret' => env('VONAGE_SECRET'),
+        'sms_from' => env('VONAGE_SMS_FROM'),
     ],
 
 ];
