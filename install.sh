@@ -72,11 +72,22 @@ step "Configuration"
 prompt -rp "App name            [Tuesday Golf League]: " APP_NAME
 APP_NAME="${APP_NAME:-Tuesday Golf League}"
 
-prompt -rp "App URL             [http://localhost]: " APP_URL
-APP_URL="${APP_URL:-http://localhost}"
-
 prompt -rp "Nginx server_name   [_]: " SERVER_NAME
 SERVER_NAME="${SERVER_NAME:-_}"
+
+ENABLE_SSL="n"
+if [[ "$SERVER_NAME" != "_" ]]; then
+    prompt -rp "Enable HTTPS (Let's Encrypt)? [y/N]: " ENABLE_SSL
+    ENABLE_SSL="${ENABLE_SSL,,}"
+fi
+
+if [[ "$ENABLE_SSL" == "y" && "$SERVER_NAME" != "_" ]]; then
+    DEFAULT_URL="https://${SERVER_NAME}"
+else
+    DEFAULT_URL="http://localhost"
+fi
+prompt -rp "App URL             [${DEFAULT_URL}]: " APP_URL
+APP_URL="${APP_URL:-${DEFAULT_URL}}"
 
 prompt -rp "DB name             [golf]: " DB_DATABASE
 DB_DATABASE="${DB_DATABASE:-golf}"
@@ -106,12 +117,20 @@ prompt -rsp "Confirm admin pass  : " ADMIN_PASSWORD_CONFIRM
 echo
 [[ "$ADMIN_PASSWORD" != "$ADMIN_PASSWORD_CONFIRM" ]] && error "Admin passwords do not match. Please re-run the installer."
 
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    prompt -rp "Email for Let's Encrypt [${ADMIN_EMAIL}]: " SSL_EMAIL
+    SSL_EMAIL="${SSL_EMAIL:-${ADMIN_EMAIL}}"
+fi
+
 echo
 info "Install directory : $INSTALL_DIR"
 info "App URL           : $APP_URL"
 info "Nginx server_name : $SERVER_NAME"
 info "Database          : $DB_DATABASE (user: $DB_USERNAME)"
 info "Admin email       : $ADMIN_EMAIL"
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    info "SSL (HTTPS)       : Enabled (Let's Encrypt, ${SSL_EMAIL})"
+fi
 echo
 prompt -rp "Proceed? [y/N]: " CONFIRM
 [[ "${CONFIRM,,}" != "y" ]] && echo "Aborted." && exit 0
@@ -145,7 +164,7 @@ apt-get install -y -qq \
     "php${PHP_VER}-intl"
 
 info "Installing nginx, MySQL, and utilities..."
-apt-get install -y -qq nginx mariadb-server curl unzip git
+apt-get install -y -qq nginx mariadb-server curl unzip git certbot python3-certbot-nginx
 
 # Stop nginx immediately – it auto-starts with the default site after install.
 # We'll configure and start it properly below.
@@ -201,7 +220,28 @@ success "PHP ${PHP_VER}-FPM running (socket: ${PHP_FPM_SOCK})"
 step "Configuring nginx"
 
 NGINX_CONF="/etc/nginx/sites-available/golf"
-cat > "$NGINX_CONF" <<NGINX
+
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    # Initial HTTP-only config so certbot can perform the HTTP-01 challenge
+    cat > "$NGINX_CONF" <<NGINX
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name ${SERVER_NAME};
+    root ${INSTALL_DIR}/public;
+
+    location /.well-known/acme-challenge/ {
+        allow all;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+NGINX
+else
+    cat > "$NGINX_CONF" <<NGINX
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -235,8 +275,9 @@ server {
     }
 }
 NGINX
+fi
 
-# Remove all existing sites so only the golf app is served on port 80
+# Remove all existing sites so only the golf app is served
 for site in /etc/nginx/sites-enabled/*; do
     [[ -e "$site" ]] && rm -f "$site" && info "Removed $(basename "$site") from sites-enabled."
 done
@@ -249,6 +290,85 @@ ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/golf
 # Full restart (not reload) to ensure clean slate on fresh installs
 nginx -t && systemctl enable --now nginx && systemctl restart nginx
 success "Nginx configured and restarted."
+
+# ─── SSL / Let's Encrypt ────────────────────────────────────────────────────
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    step "Obtaining SSL certificate"
+
+    info "Running certbot for ${SERVER_NAME}..."
+    certbot --nginx \
+        -d "$SERVER_NAME" \
+        --non-interactive \
+        --agree-tos \
+        --email "$SSL_EMAIL" \
+        --redirect
+
+    # certbot --nginx rewrites the config, but we want to ensure our full
+    # Laravel-compatible setup is present in the SSL server block.
+    # Re-write the config with both HTTP redirect and HTTPS server blocks.
+    cat > "$NGINX_CONF" <<NGINX
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name ${SERVER_NAME};
+
+    location /.well-known/acme-challenge/ {
+        allow all;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+
+    server_name ${SERVER_NAME};
+    root ${INSTALL_DIR}/public;
+
+    ssl_certificate /etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${SERVER_NAME}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+    index index.php;
+    charset utf-8;
+
+    client_max_body_size 100M;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:${PHP_FPM_SOCK};
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+NGINX
+
+    nginx -t && systemctl reload nginx
+    success "SSL certificate installed and nginx reloaded."
+
+    # Enable automatic renewal timer
+    systemctl enable --now certbot.timer &>/dev/null || true
+    success "Certbot auto-renewal enabled."
+fi
 
 # ─── MySQL setup ──────────────────────────────────────────────────────────────
 step "Configuring MySQL"
@@ -377,8 +497,17 @@ echo -e "  PHP        : ${PHP_VER}"
 echo -e "  Database   : ${DB_DATABASE} @ 127.0.0.1"
 echo -e "  Admin      : ${CYAN}${ADMIN_EMAIL}${RESET} (super admin)"
 echo
+if [[ "$ENABLE_SSL" == "y" ]]; then
+    echo -e "  SSL        : ${GREEN}Enabled (Let's Encrypt)${RESET}"
+fi
 echo -e "  ${BOLD}Visit your golf league at:${RESET}"
 echo -e "    ${CYAN}${APP_URL}${RESET}"
-[[ "$SERVER_NAME" != "_" ]] && echo -e "    ${CYAN}http://${SERVER_NAME}${RESET}"
+if [[ "$SERVER_NAME" != "_" ]]; then
+    if [[ "$ENABLE_SSL" == "y" ]]; then
+        echo -e "    ${CYAN}https://${SERVER_NAME}${RESET}"
+    else
+        echo -e "    ${CYAN}http://${SERVER_NAME}${RESET}"
+    fi
+fi
 [[ "$SERVER_IP" != "127.0.0.1" ]] && echo -e "    ${CYAN}http://${SERVER_IP}${RESET}"
 echo
