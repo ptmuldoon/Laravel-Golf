@@ -266,6 +266,10 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
 
+        if ($user->isSuperAdmin() && !auth()->user()->isSuperAdmin()) {
+            return redirect()->route('admin.users')->with('error', 'You cannot edit the super admin account.');
+        }
+
         return view('admin.user-edit', compact('user'));
     }
 
@@ -275,6 +279,10 @@ class AdminController extends Controller
     public function updateUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
+
+        if ($user->isSuperAdmin() && !auth()->user()->isSuperAdmin()) {
+            return redirect()->route('admin.users')->with('error', 'You cannot edit the super admin account.');
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -314,6 +322,10 @@ class AdminController extends Controller
 
         if ($user->id === auth()->id()) {
             return redirect()->route('admin.users')->with('error', 'You cannot delete your own account.');
+        }
+
+        if ($user->isSuperAdmin()) {
+            return redirect()->route('admin.users')->with('error', 'The super admin account cannot be deleted.');
         }
 
         $user->delete();
