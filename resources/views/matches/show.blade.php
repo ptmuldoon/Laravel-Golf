@@ -127,12 +127,17 @@
             font-size: 0.85em;
             color: #666;
         }
-        .stroke-dots-row td {
-            padding: 1px 8px;
-            font-size: 0.7em;
+        .score-cell {
+            position: relative;
+        }
+        .score-cell .stroke-dots {
+            position: absolute;
+            top: 1px;
+            right: 2px;
+            font-size: 0.75em;
             color: var(--secondary-color);
-            border: none;
             line-height: 1;
+            pointer-events: none;
         }
         .hole-won {
             background: #d4edda;
@@ -407,13 +412,6 @@
                                 @endif
                             @endif
 
-                            <tr class="stroke-dots-row">
-                                <td></td><td></td>
-                                @for($hole = $holeRange[0]; $hole <= $holeRange[1]; $hole++)
-                                    <td>{{ str_repeat('●', $strokesOnHole[$hole] ?? 0) }}</td>
-                                @endfor
-                                <td></td>
-                            </tr>
                             <tr>
                                 <td class="player-name" {!! $rideWithOpponent ? 'style="color: ' . ($isHome ? '#28a745' : '#dc3545') . ';"' : '' !!}>
                                     {{ $matchPlayer->display_name }}
@@ -429,7 +427,10 @@
                                     @php
                                         $score = $matchPlayer->scores->where('hole_number', $hole)->first();
                                     @endphp
-                                    <td>{{ $score?->strokes ?? '-' }}</td>
+                                    <td class="score-cell">
+                                        @if(($strokesOnHole[$hole] ?? 0) > 0)<span class="stroke-dots">{{ str_repeat('●', $strokesOnHole[$hole]) }}</span>@endif
+                                        {{ $score?->strokes ?? '-' }}
+                                    </td>
                                 @endfor
                                 <td class="total-cell">{{ $matchPlayer->totalStrokes() ?: '-' }}</td>
                             </tr>
@@ -449,7 +450,20 @@
                                             {{ $r === 'won' ? '1' : ($r === 'lost' ? '0' : '½') }}
                                         </td>
                                     @endfor
-                                    <td style="font-weight: 700; background: var(--primary-light);">{{ $indWins + ($indTies * 0.5) }}</td>
+                                    @php
+                                        // Show matchup outcome using league-configured points
+                                        if ($indWins > $indLosses) {
+                                            $indMatchPts = $indPointsWin ?? 0.5;
+                                            $indMatchLabel = 'W (' . $indWins . '-' . $indLosses . ')';
+                                        } elseif ($indLosses > $indWins) {
+                                            $indMatchPts = $indPointsLoss ?? 0.0;
+                                            $indMatchLabel = 'L (' . $indLosses . '-' . $indWins . ')';
+                                        } else {
+                                            $indMatchPts = $indPointsTie ?? 0.25;
+                                            $indMatchLabel = 'T (' . $indWins . '-' . $indLosses . ')';
+                                        }
+                                    @endphp
+                                    <td style="font-weight: 700; background: var(--primary-light);" title="{{ $indMatchLabel }}">{{ $indMatchPts }} pts</td>
                                 </tr>
                             @endif
                         @endforeach

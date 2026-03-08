@@ -202,12 +202,17 @@
             font-weight: 600;
             color: var(--primary-color);
         }
-        .stroke-dots-row td {
-            padding: 1px 6px;
-            font-size: 0.7em;
+        .score-cell {
+            position: relative;
+        }
+        .score-cell .stroke-dots {
+            position: absolute;
+            top: 1px;
+            right: 2px;
+            font-size: 0.75em;
             color: var(--secondary-color);
-            border: none;
             line-height: 1;
+            pointer-events: none;
         }
         .results-row td {
             padding: 6px;
@@ -565,13 +570,6 @@
                                                     @endif
                                                 @endif
 
-                                                <tr class="stroke-dots-row">
-                                                    <td></td><td></td>
-                                                    @for($hole = $holeRange[0]; $hole <= $holeRange[1]; $hole++)
-                                                        <td>{{ str_repeat('●', $strokesOnHole[$hole] ?? 0) }}</td>
-                                                    @endfor
-                                                    <td></td>
-                                                </tr>
                                                 <tr>
                                                     <td class="player-name-cell" {!! $rideWithOpponent ? 'style="color: ' . ($isHome ? '#28a745' : '#dc3545') . ';"' : '' !!}>
                                                         {{ $mp->display_name }}
@@ -579,12 +577,13 @@
                                                             <span style="font-size: 0.75em; color: var(--secondary-color); font-weight: 500;">({{ $playerHandicaps[$mp->id]['ch18'] }} / {{ collect($strokesOnHole)->only(range($holeRange[0], $holeRange[1]))->sum() }})</span>
                                                         @endif
                                                     </td>
-                                                    <td class="handicap-cell">HI: {{ number_format($mp->handicap_index, 1) }}<br>CH: {{ $mp->course_handicap }}</td>
+                                                    <td class="handicap-cell">HI: {{ number_format($mp->handicap_index, 1) }}<br>CH: {{ $playerHandicaps[$mp->id]['ch18'] ?? $mp->course_handicap }}</td>
                                                     @for($hole = $holeRange[0]; $hole <= $holeRange[1]; $hole++)
                                                         @php
                                                             $existing = $mp->scores->where('hole_number', $hole)->first();
                                                         @endphp
-                                                        <td>
+                                                        <td class="score-cell">
+                                                            @if(($strokesOnHole[$hole] ?? 0) > 0)<span class="stroke-dots">{{ str_repeat('●', $strokesOnHole[$hole]) }}</span>@endif
                                                             <input type="number"
                                                                    name="scores[{{ $mp->id }}][{{ $hole }}]"
                                                                    min="1" max="15"

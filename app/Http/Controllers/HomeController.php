@@ -158,10 +158,14 @@ class HomeController extends Controller
                                 $wkGross = ($wkGross ?? 0) + $gross;
                             }
                             if ($mp->match->result) {
-                                $isHome = $mp->position_in_pairing <= 2;
-                                $pts = $isHome
-                                    ? ($mp->match->result->team_points_home ?? 0)
-                                    : ($mp->match->result->team_points_away ?? 0);
+                                $isHome = $mp->team_id == $mp->match->home_team_id;
+                                if ($mp->match->scoring_type === 'individual_match_play') {
+                                    $pts = $this->getIndividualPlayerPoints($mp);
+                                } else {
+                                    $pts = $isHome
+                                        ? ($mp->match->result->team_points_home ?? 0)
+                                        : ($mp->match->result->team_points_away ?? 0);
+                                }
                                 $wkPoints = ($wkPoints ?? 0) + $pts;
                             }
                             $wkHi = $mp->handicap_index;
@@ -186,13 +190,17 @@ class HomeController extends Controller
 
                     foreach ($entries as $mp) {
                         if (!$mp->match->result) continue;
-                        $isHome = $mp->position_in_pairing <= 2;
+                        $isHome = $mp->team_id == $mp->match->home_team_id;
                         $result = $mp->match->result;
 
                         // Points
-                        $pts = $isHome
-                            ? ($result->team_points_home ?? 0)
-                            : ($result->team_points_away ?? 0);
+                        if ($mp->match->scoring_type === 'individual_match_play') {
+                            $pts = $this->getIndividualPlayerPoints($mp);
+                        } else {
+                            $pts = $isHome
+                                ? ($result->team_points_home ?? 0)
+                                : ($result->team_points_away ?? 0);
+                        }
                         $totalSeasonPoints += $pts;
 
                         // Per-segment points
@@ -203,8 +211,13 @@ class HomeController extends Controller
                             }
                         }
 
-                        // W-L-T
-                        if ($result->winning_team_id === null) {
+                        // W-L-T for individual match play: based on individual matchup
+                        if ($mp->match->scoring_type === 'individual_match_play') {
+                            $indResult = $this->getIndividualMatchupResult($mp);
+                            if ($indResult === 'win') $wins++;
+                            elseif ($indResult === 'loss') $losses++;
+                            else $ties++;
+                        } elseif ($result->winning_team_id === null) {
                             $ties++;
                         } else {
                             $playerWon = ($isHome && $result->winning_team_id == $mp->match->home_team_id)
@@ -882,5 +895,93 @@ class HomeController extends Controller
         }
 
         return view('leagues.week-results-partial', compact('weekMatches', 'matchTeamNames', 'scorecardData'));
+    }
+
+    /**
+     * Calculate individual match play points for a specific player's matchup.
+     * Recomputes net scores using 18-hole CH distribution to match the match show page.
+     */
+    private function getIndividualPlayerPoints($mp): float
+    {
+        $match = $mp->match;
+        $result = $this->getIndividualMatchupResult($mp);
+
+        $scoringType = 'individual_match_play';
+        if ($result === 'win') {
+            return (float) \App\Models\ScoringSetting::getPoints($scoringType, 'win', 0.5, $match->league_id);
+        } elseif ($result === 'loss') {
+            return (float) \App\Models\ScoringSetting::getPoints($scoringType, 'loss', 0.0, $match->league_id);
+        }
+        return (float) \App\Models\ScoringSetting::getPoints($scoringType, 'tie', 0.25, $match->league_id);
+    }
+
+    /**
+     * Determine if a player won, lost, or tied their individual matchup.
+     * Uses 18-hole CH distribution for net score calculation.
+     */
+    private function getIndividualMatchupResult($mp): string
+    {
+        $match = $mp->match;
+        $holeStart = $match->holes === 'back_9' ? 10 : 1;
+        $holeEnd = $match->holes === 'back_9' ? 18 : 9;
+        $useGross = ($match->score_mode === 'gross' || $match->scoring_type === 'scramble');
+
+        // Find the opponent: same position index on the other team
+        $isHome = $mp->team_id == $match->home_team_id;
+        $myTeamPlayers = $match->matchPlayers
+            ->where('team_id', $mp->team_id)
+            ->sortBy('position_in_pairing')->values();
+        $oppTeamId = $isHome ? $match->away_team_id : $match->home_team_id;
+        $oppTeamPlayers = $match->matchPlayers
+            ->where('team_id', $oppTeamId)
+            ->sortBy('position_in_pairing')->values();
+
+        $myIndex = $myTeamPlayers->search(fn($p) => $p->id === $mp->id);
+        $opponent = $oppTeamPlayers[$myIndex] ?? null;
+        if (!$opponent) return 'tie';
+
+        // Build stroke maps if net scoring
+        $strokeMaps = [];
+        if (!$useGross) {
+            $allCourseInfo = $match->golfCourse->courseInfo()
+                ->where('teebox', $match->teebox)
+                ->orderBy('hole_number')->get();
+            $par18 = $allCourseInfo->sum('par');
+            $slope = (float) $allCourseInfo->first()->slope;
+            $rating = (float) $allCourseInfo->first()->rating;
+            $sorted = $allCourseInfo->sortBy('handicap')->pluck('hole_number')->values();
+
+            foreach ([$mp, $opponent] as $p) {
+                $ch18 = (int) round(((float) $p->handicap_index * $slope / 113) + ($rating - $par18));
+                $map = [];
+                foreach ($allCourseInfo as $h) { $map[$h->hole_number] = 0; }
+                $rem = max(0, $ch18);
+                while ($rem > 0) { foreach ($sorted as $hn) { if ($rem <= 0) break; $map[$hn]++; $rem--; } }
+                $strokeMaps[$p->id] = $map;
+            }
+        }
+
+        $myWins = 0;
+        $oppWins = 0;
+        for ($hole = $holeStart; $hole <= $holeEnd; $hole++) {
+            $myScore = $mp->scores->where('hole_number', $hole)->first();
+            $oppScore = $opponent->scores->where('hole_number', $hole)->first();
+            if (!$myScore || !$oppScore) continue;
+
+            if ($useGross) {
+                $myVal = (int) $myScore->strokes;
+                $oppVal = (int) $oppScore->strokes;
+            } else {
+                $myVal = (int) $myScore->strokes - ($strokeMaps[$mp->id][$hole] ?? 0);
+                $oppVal = (int) $oppScore->strokes - ($strokeMaps[$opponent->id][$hole] ?? 0);
+            }
+
+            if ($myVal < $oppVal) $myWins++;
+            elseif ($oppVal < $myVal) $oppWins++;
+        }
+
+        if ($myWins > $oppWins) return 'win';
+        if ($oppWins > $myWins) return 'loss';
+        return 'tie';
     }
 }

@@ -372,7 +372,12 @@ class MatchController extends Controller
             }
         }
 
-        return view('matches.show', compact('match', 'courseInfo', 'allCourseInfo', 'holeRange', 'scoringTypes', 'homePlayers', 'awayPlayers', 'homeTeamName', 'awayTeamName', 'playerHandicaps', 'holeResults', 'homeWinsTotal', 'awayWinsTotal', 'tiesTotal', 'individualResults'));
+        // Get individual match play point values for display
+        $indPointsWin = ScoringSetting::getPoints('individual_match_play', ScoringSetting::OUTCOME_WIN, 0.5, $match->league_id);
+        $indPointsLoss = ScoringSetting::getPoints('individual_match_play', ScoringSetting::OUTCOME_LOSS, 0.0, $match->league_id);
+        $indPointsTie = ScoringSetting::getPoints('individual_match_play', ScoringSetting::OUTCOME_TIE, 0.25, $match->league_id);
+
+        return view('matches.show', compact('match', 'courseInfo', 'allCourseInfo', 'holeRange', 'scoringTypes', 'homePlayers', 'awayPlayers', 'homeTeamName', 'awayTeamName', 'playerHandicaps', 'holeResults', 'homeWinsTotal', 'awayWinsTotal', 'tiesTotal', 'individualResults', 'indPointsWin', 'indPointsLoss', 'indPointsTie'));
     }
 
     /**

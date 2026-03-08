@@ -51,7 +51,7 @@ class AdminController extends Controller
             ->pluck('matches.league_id')
             ->toArray();
 
-        $emailConfigured = !empty(config('mail.mailers.smtp.host')) && !empty(config('mail.mailers.smtp.username'));
+        $emailConfigured = !empty(config('mail.mailers.smtp.username'));
         $smsConfigured = !empty(config('services.vonage.key')) && !empty(config('services.vonage.secret')) && !empty(config('services.vonage.sms_from'));
 
         return view('admin.dashboard', compact('stats', 'activeLeagues', 'recentMatches', 'leaguesWithScores', 'emailConfigured', 'smsConfigured'));

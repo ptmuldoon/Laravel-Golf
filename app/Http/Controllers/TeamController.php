@@ -78,6 +78,10 @@ class TeamController extends Controller
         $team = Team::findOrFail($id);
         $team->update($validated);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'team' => $team]);
+        }
+
         return $this->teamRedirect($team, 'Team updated successfully!');
     }
 

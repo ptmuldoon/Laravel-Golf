@@ -370,6 +370,14 @@
                         Email Message
                     </a>
                 @endif
+                @if($smsConfigured)
+                    <a href="{{ route('admin.leagues.smsResults', $league->id) }}" class="btn btn-success">
+                        SMS Results
+                    </a>
+                    <a href="{{ route('admin.leagues.smsMessage', $league->id) }}" class="btn btn-success">
+                        SMS Message
+                    </a>
+                @endif
                 <a href="{{ route('admin.leagues.holeStats', $league->id) }}" class="btn btn-primary">
                     Hole Stats
                 </a>
@@ -563,21 +571,98 @@
                                     </span>
 
                                     @if($match->status === 'completed' && $match->result)
-                                        @php
-                                            $hHome = $match->result->holes_won_home + ($match->result->holes_tied * 0.5);
-                                            $hAway = $match->result->holes_won_away + ($match->result->holes_tied * 0.5);
-                                            $fH = $hHome == (int)$hHome ? (int)$hHome : number_format($hHome, 1);
-                                            $fA = $hAway == (int)$hAway ? (int)$hAway : number_format($hAway, 1);
-                                        @endphp
-                                        <div class="match-result">
-                                            @if($match->result->winning_team_id && $match->result->winningTeam)
-                                                🏆 {{ $match->result->winningTeam->name }} wins
-                                                ({{ $fH }} - {{ $fA }})
-                                            @else
-                                                🤝 Match Tied
-                                                ({{ $fH }} - {{ $fA }})
-                                            @endif
-                                        </div>
+                                        @if($match->scoring_type === 'individual_match_play')
+                                            @php
+                                                $indWinPts = \App\Models\ScoringSetting::getPoints('individual_match_play', 'win', 0.5, $match->league_id);
+                                                $indLossPts = \App\Models\ScoringSetting::getPoints('individual_match_play', 'loss', 0.0, $match->league_id);
+                                                $indTiePts = \App\Models\ScoringSetting::getPoints('individual_match_play', 'tie', 0.25, $match->league_id);
+                                                $homeMPs = $match->matchPlayers->where('team_id', $match->home_team_id)->sortBy('position_in_pairing')->values();
+                                                $awayMPs = $match->matchPlayers->where('team_id', $match->away_team_id)->sortBy('position_in_pairing')->values();
+                                                $pairCount = min($homeMPs->count(), $awayMPs->count());
+                                                $holeStart = $match->holes === 'back_9' ? 10 : 1;
+                                                $holeEnd = $match->holes === 'back_9' ? 18 : 9;
+                                                $useGrossView = ($match->score_mode === 'gross' || $match->scoring_type === 'scramble');
+
+                                                // Build stroke maps using 18-hole CH distribution (matching match show page)
+                                                $viewStrokeMaps = [];
+                                                if (!$useGrossView && $match->golfCourse) {
+                                                    $viewAllCourse = $match->golfCourse->courseInfo()->where('teebox', $match->teebox)->orderBy('hole_number')->get();
+                                                    $viewPar18 = $viewAllCourse->sum('par');
+                                                    $viewSlope = (float) $viewAllCourse->first()->slope;
+                                                    $viewRating = (float) $viewAllCourse->first()->rating;
+                                                    $viewSorted = $viewAllCourse->sortBy('handicap')->pluck('hole_number')->values();
+                                                    foreach ($match->matchPlayers as $vmp) {
+                                                        $vCh18 = (int) round(((float) $vmp->handicap_index * $viewSlope / 113) + ($viewRating - $viewPar18));
+                                                        $vMap = [];
+                                                        foreach ($viewAllCourse as $vh) { $vMap[$vh->hole_number] = 0; }
+                                                        $vRem = max(0, $vCh18);
+                                                        while ($vRem > 0) { foreach ($viewSorted as $vhn) { if ($vRem <= 0) break; $vMap[$vhn]++; $vRem--; } }
+                                                        $viewStrokeMaps[$vmp->id] = $vMap;
+                                                    }
+                                                }
+                                            @endphp
+                                            <div style="margin-top: 8px;">
+                                                @for($p = 0; $p < $pairCount; $p++)
+                                                    @php
+                                                        $hMP = $homeMPs[$p];
+                                                        $aMP = $awayMPs[$p];
+                                                        $pHW = 0; $pAW = 0;
+                                                        for ($hole = $holeStart; $hole <= $holeEnd; $hole++) {
+                                                            $hs = $hMP->scores->where('hole_number', $hole)->first();
+                                                            $as = $aMP->scores->where('hole_number', $hole)->first();
+                                                            if ($useGrossView) {
+                                                                $hv = $hs ? (int) $hs->strokes : 999;
+                                                                $av = $as ? (int) $as->strokes : 999;
+                                                            } else {
+                                                                $hv = $hs ? (int) $hs->strokes - ($viewStrokeMaps[$hMP->id][$hole] ?? 0) : 999;
+                                                                $av = $as ? (int) $as->strokes - ($viewStrokeMaps[$aMP->id][$hole] ?? 0) : 999;
+                                                            }
+                                                            if ($hv < $av) $pHW++;
+                                                            elseif ($av < $hv) $pAW++;
+                                                        }
+                                                        if ($pHW > $pAW) {
+                                                            $pHomePts = $indWinPts; $pAwayPts = $indLossPts;
+                                                            $pIcon = '🟢'; $pLabel = $hMP->display_name . ' wins';
+                                                        } elseif ($pAW > $pHW) {
+                                                            $pHomePts = $indLossPts; $pAwayPts = $indWinPts;
+                                                            $pIcon = '🔴'; $pLabel = $aMP->display_name . ' wins';
+                                                        } else {
+                                                            $pHomePts = $indTiePts; $pAwayPts = $indTiePts;
+                                                            $pIcon = '🟡'; $pLabel = 'Tied';
+                                                        }
+                                                        $fPH = $pHomePts == (int)$pHomePts ? (int)$pHomePts : number_format($pHomePts, 2);
+                                                        $fPA = $pAwayPts == (int)$pAwayPts ? (int)$pAwayPts : number_format($pAwayPts, 2);
+                                                    @endphp
+                                                    <div style="background: #f8f9fa; padding: 6px 10px; border-radius: 5px; margin-bottom: 4px; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center;">
+                                                        <span>{{ $pIcon }} {{ $hMP->player->name ?? $hMP->display_name }} ({{ $fPH }}) vs {{ $aMP->player->name ?? $aMP->display_name }} ({{ $fPA }})</span>
+                                                        <span style="font-weight: 600; white-space: nowrap;">{{ $pHW }}-{{ $pAW }} holes</span>
+                                                    </div>
+                                                @endfor
+                                                <div style="background: #d4edda; padding: 6px 10px; border-radius: 5px; font-size: 0.85em; font-weight: 600;">
+                                                    @php
+                                                        $fTH = $match->result->team_points_home == (int)$match->result->team_points_home ? (int)$match->result->team_points_home : number_format($match->result->team_points_home, 2);
+                                                        $fTA = $match->result->team_points_away == (int)$match->result->team_points_away ? (int)$match->result->team_points_away : number_format($match->result->team_points_away, 2);
+                                                    @endphp
+                                                    Team Total: {{ $match->homeTeam->name ?? 'Home' }} {{ $fTH }} - {{ $fTA }} {{ $match->awayTeam->name ?? 'Away' }}
+                                                </div>
+                                            </div>
+                                        @else
+                                            @php
+                                                $hHome = $match->result->holes_won_home + ($match->result->holes_tied * 0.5);
+                                                $hAway = $match->result->holes_won_away + ($match->result->holes_tied * 0.5);
+                                                $fH = $hHome == (int)$hHome ? (int)$hHome : number_format($hHome, 1);
+                                                $fA = $hAway == (int)$hAway ? (int)$hAway : number_format($hAway, 1);
+                                            @endphp
+                                            <div class="match-result">
+                                                @if($match->result->winning_team_id && $match->result->winningTeam)
+                                                    🏆 {{ $match->result->winningTeam->name }} wins
+                                                    ({{ $fH }} - {{ $fA }})
+                                                @else
+                                                    🤝 Match Tied
+                                                    ({{ $fH }} - {{ $fA }})
+                                                @endif
+                                            </div>
+                                        @endif
                                     @endif
 
                                     <div class="match-actions">

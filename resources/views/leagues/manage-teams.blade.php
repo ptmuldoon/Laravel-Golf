@@ -590,6 +590,33 @@
             document.getElementById(`name-display-${teamId}`).style.display = 'flex';
             document.getElementById(`name-form-${teamId}`).classList.remove('active');
         }
+        async function saveTeamName(e, teamId) {
+            e.preventDefault();
+            const form = document.getElementById(`name-form-${teamId}`);
+            const input = form.querySelector('input[name="name"]');
+            const newName = input.value.trim();
+            if (!newName) return false;
+            try {
+                const response = await fetch(`/admin/teams/${teamId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ _method: 'PUT', name: newName }),
+                    redirect: 'manual'
+                });
+                if (response.ok || response.type === 'opaqueredirect' || response.status === 302 || response.status === 0) {
+                    const display = document.getElementById(`name-display-${teamId}`);
+                    display.querySelector('.team-name').textContent = newName;
+                    display.style.display = 'flex';
+                    form.classList.remove('active');
+                    showToast('Team name updated');
+                } else {
+                    showToast('Failed to update team name', 'error');
+                }
+            } catch {
+                showToast('Network error. Please try again.', 'error');
+            }
+            return false;
+        }
 
         // ── Selection (available panel only) ──
 

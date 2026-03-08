@@ -126,7 +126,7 @@ class LeagueController extends Controller
 
         // Get matches by week
         $matchesByWeek = $league->matches()
-            ->with(['homeTeam', 'awayTeam', 'result'])
+            ->with(['homeTeam', 'awayTeam', 'result.winningTeam', 'matchPlayers.scores', 'matchPlayers.player'])
             ->orderBy('week_number')
             ->orderBy('match_date')
             ->get()
@@ -148,7 +148,7 @@ class LeagueController extends Controller
             ->get()
             ->groupBy('week_number');
 
-        $emailConfigured = !empty(config('mail.mailers.smtp.host')) && !empty(config('mail.mailers.smtp.username'));
+        $emailConfigured = !empty(config('mail.mailers.smtp.username'));
         $smsConfigured = !empty(config('services.vonage.key')) && !empty(config('services.vonage.secret')) && !empty(config('services.vonage.sms_from'));
 
         return view('leagues.show', compact('league', 'teams', 'matchesByWeek', 'standingsBySegment', 'weekSegmentMap', 'par3WinnersByWeek', 'emailConfigured', 'smsConfigured'));

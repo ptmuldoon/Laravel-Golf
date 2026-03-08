@@ -111,6 +111,66 @@ class MatchPlayCalculator
     }
 
     /**
+     * Build per-hole stroke allocation for a player using 18-hole course handicap
+     * distributed across all 18 holes by hole handicap ranking.
+     *
+     * @return array [hole_number => strokes_received]
+     */
+    protected function buildStrokeMap(int $ch18, $allCourseInfo): array
+    {
+        $strokesOnHole = [];
+        foreach ($allCourseInfo as $h) {
+            $strokesOnHole[$h->hole_number] = 0;
+        }
+        $sorted = $allCourseInfo->sortBy('handicap')->pluck('hole_number')->values();
+        $remaining = max(0, $ch18);
+        while ($remaining > 0) {
+            foreach ($sorted as $hn) {
+                if ($remaining <= 0) break;
+                $strokesOnHole[$hn]++;
+                $remaining--;
+            }
+        }
+        return $strokesOnHole;
+    }
+
+    /**
+     * Get the effective score for a hole: recomputes net from strokes using
+     * 18-hole handicap distribution to match the match show page display.
+     */
+    protected function getHoleScore($matchPlayer, int $hole, bool $useGross, array $strokeMap): int
+    {
+        $score = $matchPlayer->scores()->where('hole_number', $hole)->first();
+        if (!$score) return 999;
+        if ($useGross) return (int) $score->strokes;
+        return (int) $score->strokes - ($strokeMap[$hole] ?? 0);
+    }
+
+    /**
+     * Build stroke maps for all match players using 18-hole course handicap.
+     *
+     * @return array [match_player_id => [hole_number => strokes_received]]
+     */
+    protected function buildAllStrokeMaps(LeagueMatch $match): array
+    {
+        $allCourseInfo = $match->golfCourse->courseInfo()
+            ->where('teebox', $match->teebox)
+            ->orderBy('hole_number')
+            ->get();
+        $par18 = $allCourseInfo->sum('par');
+        $slope = (float) $allCourseInfo->first()->slope;
+        $rating = (float) $allCourseInfo->first()->rating;
+
+        $maps = [];
+        foreach ($match->matchPlayers as $mp) {
+            $hi = (float) $mp->handicap_index;
+            $ch18 = (int) round(($hi * $slope / 113) + ($rating - $par18));
+            $maps[$mp->id] = $this->buildStrokeMap($ch18, $allCourseInfo);
+        }
+        return $maps;
+    }
+
+    /**
      * Process all scores for a match and determine final result.
      * Dispatches to the appropriate calculation method based on scoring type.
      */
@@ -150,9 +210,8 @@ class MatchPlayCalculator
                 ->orderBy('position_in_pairing')->get();
         }
 
-        // Scramble always uses gross scores (no individual handicap adjustments)
         $useGross = ($match->score_mode === 'gross' || $match->scoring_type === ScoringSetting::TYPE_SCRAMBLE);
-        $scoreField = $useGross ? 'strokes' : 'net_score';
+        $strokeMaps = $useGross ? [] : $this->buildAllStrokeMaps($match);
 
         $matchesWonHome = 0;
         $matchesWonAway = 0;
@@ -168,11 +227,8 @@ class MatchPlayCalculator
             $pairHolesWonAway = 0;
 
             for ($hole = $startHole; $hole <= $endHole; $hole++) {
-                $homeScore = $homePlayer->scores()->where('hole_number', $hole)->first();
-                $awayScore = $awayPlayer->scores()->where('hole_number', $hole)->first();
-
-                $homeVal = $homeScore ? $homeScore->{$scoreField} : 999;
-                $awayVal = $awayScore ? $awayScore->{$scoreField} : 999;
+                $homeVal = $this->getHoleScore($homePlayer, $hole, $useGross, $strokeMaps[$homePlayer->id] ?? []);
+                $awayVal = $this->getHoleScore($awayPlayer, $hole, $useGross, $strokeMaps[$awayPlayer->id] ?? []);
 
                 $winner = $this->determineHoleWinner($homeVal, $awayVal);
 
@@ -212,23 +268,20 @@ class MatchPlayCalculator
             $awayTeamPlayers = $match->matchPlayers()->where('position_in_pairing', '>', 2)->get();
         }
 
+        $useGross = ($match->score_mode === 'gross' || $match->scoring_type === ScoringSetting::TYPE_SCRAMBLE);
+        $strokeMaps = $useGross ? [] : $this->buildAllStrokeMaps($match);
+
         $holesWonHome = 0;
         $holesWonAway = 0;
         $holesTied = 0;
 
-        // Scramble always uses gross scores (no individual handicap adjustments)
-        $useGross = ($match->score_mode === 'gross' || $match->scoring_type === ScoringSetting::TYPE_SCRAMBLE);
-        $scoreField = $useGross ? 'strokes' : 'net_score';
-
         for ($hole = $startHole; $hole <= $endHole; $hole++) {
-            $homeScores = $homeTeamPlayers->map(function ($mp) use ($hole, $scoreField) {
-                $score = $mp->scores()->where('hole_number', $hole)->first();
-                return $score ? $score->{$scoreField} : 999;
+            $homeScores = $homeTeamPlayers->map(function ($mp) use ($hole, $useGross, $strokeMaps) {
+                return $this->getHoleScore($mp, $hole, $useGross, $strokeMaps[$mp->id] ?? []);
             });
 
-            $awayScores = $awayTeamPlayers->map(function ($mp) use ($hole, $scoreField) {
-                $score = $mp->scores()->where('hole_number', $hole)->first();
-                return $score ? $score->{$scoreField} : 999;
+            $awayScores = $awayTeamPlayers->map(function ($mp) use ($hole, $useGross, $strokeMaps) {
+                return $this->getHoleScore($mp, $hole, $useGross, $strokeMaps[$mp->id] ?? []);
             });
 
             $bestHomeScore = $homeScores->min();
@@ -266,9 +319,8 @@ class MatchPlayCalculator
             $awayPlayers = $match->matchPlayers()->where('position_in_pairing', '>', 2)->get();
         }
 
-        // Scramble always uses gross scores (no individual handicap adjustments)
         $useGross = ($match->score_mode === 'gross' || $match->scoring_type === ScoringSetting::TYPE_SCRAMBLE);
-        $scoreField = $useGross ? 'strokes' : 'net_score';
+        $strokeMaps = $useGross ? [] : $this->buildAllStrokeMaps($match);
 
         $holesWonHome = 0;
         $holesWonAway = 0;
@@ -278,9 +330,9 @@ class MatchPlayCalculator
             $homeCombined = 0;
             $homeHasScores = false;
             foreach ($homePlayers as $mp) {
-                $score = $mp->scores()->where('hole_number', $hole)->first();
-                if ($score) {
-                    $homeCombined += $score->{$scoreField};
+                $val = $this->getHoleScore($mp, $hole, $useGross, $strokeMaps[$mp->id] ?? []);
+                if ($val < 999) {
+                    $homeCombined += $val;
                     $homeHasScores = true;
                 }
             }
@@ -288,9 +340,9 @@ class MatchPlayCalculator
             $awayCombined = 0;
             $awayHasScores = false;
             foreach ($awayPlayers as $mp) {
-                $score = $mp->scores()->where('hole_number', $hole)->first();
-                if ($score) {
-                    $awayCombined += $score->{$scoreField};
+                $val = $this->getHoleScore($mp, $hole, $useGross, $strokeMaps[$mp->id] ?? []);
+                if ($val < 999) {
+                    $awayCombined += $val;
                     $awayHasScores = true;
                 }
             }
@@ -331,7 +383,9 @@ class MatchPlayCalculator
         }
 
         if ($scoringType === ScoringSetting::TYPE_INDIVIDUAL_MATCH_PLAY) {
-            // Each individual matchup awards points separately
+            // Individual match play: each matchup awards points independently,
+            // then sum for the team total. e.g. Pair 1 ties (0.25 each) +
+            // Pair 2 away wins (0.50 away, 0.00 home) = Away 0.75, Home 0.25.
             $winPoints = ScoringSetting::getPoints($scoringType, ScoringSetting::OUTCOME_WIN, 0.5, $leagueId);
             $lossPoints = ScoringSetting::getPoints($scoringType, ScoringSetting::OUTCOME_LOSS, 0.0, $leagueId);
             $tiePoints = ScoringSetting::getPoints($scoringType, ScoringSetting::OUTCOME_TIE, 0.25, $leagueId);

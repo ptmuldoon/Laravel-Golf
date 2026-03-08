@@ -5,9 +5,7 @@
                 <span class="team-name">{{ $team->name }}</span>
                 <button type="button" class="edit-name-btn" onclick="showEditName({{ $team->id }})">✏️</button>
             </div>
-            <form action="{{ route('admin.teams.update', $team->id) }}" method="POST" class="edit-name-form" id="name-form-{{ $team->id }}">
-                @csrf
-                @method('PUT')
+            <form class="edit-name-form" id="name-form-{{ $team->id }}" onsubmit="return saveTeamName(event, {{ $team->id }})">
                 <input type="text" name="name" value="{{ $team->name }}" class="edit-name-input" required maxlength="255">
                 <button type="submit" class="btn btn-success btn-small">Save</button>
                 <button type="button" class="btn btn-secondary btn-small" onclick="cancelEditName({{ $team->id }})">Cancel</button>
