@@ -20,9 +20,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'phone_number',
         'password',
         'is_admin',
         'is_super_admin',
+        'email_notifications',
+        'sms_notifications',
     ];
 
     /**
@@ -47,6 +50,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_super_admin' => 'boolean',
+            'email_notifications' => 'boolean',
+            'sms_notifications' => 'boolean',
         ];
     }
 

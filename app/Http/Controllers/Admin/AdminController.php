@@ -245,6 +245,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'phone_number' => 'nullable|string|max:20',
             'password' => 'required|string|min:8|confirmed',
             'is_admin' => 'boolean',
         ]);
@@ -252,8 +253,11 @@ class AdminController extends Controller
         User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'] ?? null,
             'password' => Hash::make($validated['password']),
             'is_admin' => $request->boolean('is_admin'),
+            'email_notifications' => $request->boolean('email_notifications'),
+            'sms_notifications' => $request->boolean('sms_notifications'),
         ]);
 
         return redirect()->route('admin.users')->with('success', 'User created successfully.');
@@ -287,12 +291,14 @@ class AdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
+            'phone_number' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8|confirmed',
             'is_admin' => 'boolean',
         ]);
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
+        $user->phone_number = $validated['phone_number'] ?? null;
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
@@ -307,6 +313,9 @@ class AdminController extends Controller
                 $user->is_admin = $request->boolean('is_admin');
             }
         }
+
+        $user->email_notifications = $request->boolean('email_notifications');
+        $user->sms_notifications = $request->boolean('sms_notifications');
 
         $user->save();
 

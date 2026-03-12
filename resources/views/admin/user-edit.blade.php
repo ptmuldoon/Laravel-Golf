@@ -264,6 +264,15 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="phone_number">Phone Number</label>
+                    <input type="text" id="phone_number" name="phone_number" value="{{ old('phone_number', $user?->phone_number) }}" placeholder="e.g. 716-555-1234">
+                    <div class="field-hint">Used for SMS notifications (sub requests, etc.)</div>
+                    @error('phone_number')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="form-group">
                     <label for="password">{{ $user ? 'New Password' : 'Password' }}</label>
                     <input type="password" id="password" name="password" {{ $user ? '' : 'required' }}>
                     @if($user)
@@ -292,6 +301,23 @@
                         <input type="hidden" name="is_admin" value="1">
                     @endif
                 @endif
+
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 15px; margin-top: 10px; margin-bottom: 20px;">
+                    <label style="margin-bottom: 12px; font-size: 0.95em;">Notification Preferences</label>
+                    <div class="checkbox-group">
+                        <input type="hidden" name="email_notifications" value="0">
+                        <input type="checkbox" id="email_notifications" name="email_notifications" value="1"
+                            {{ old('email_notifications', $user?->email_notifications ?? true) ? 'checked' : '' }}>
+                        <label for="email_notifications">📧 Email Notifications</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="hidden" name="sms_notifications" value="0">
+                        <input type="checkbox" id="sms_notifications" name="sms_notifications" value="1"
+                            {{ old('sms_notifications', $user?->sms_notifications ?? true) ? 'checked' : '' }}>
+                        <label for="sms_notifications">💬 SMS Notifications</label>
+                    </div>
+                    <div class="checkbox-hint">Controls whether this user receives sub requests and other admin notifications.</div>
+                </div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">{{ $user ? 'Update User' : 'Create User' }}</button>

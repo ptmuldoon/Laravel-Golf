@@ -296,39 +296,41 @@ class SimulateLeagueScores extends Command
 
         if (empty($par3Holes) || empty($playerIds)) return;
 
-        // Pick a random par 3 hole and a random player as the winner
-        $hole = $par3Holes[array_rand($par3Holes)];
-        $winnerId = $playerIds[array_rand($playerIds)];
-        $distance = rand(1, 30) . "'" . rand(0, 11) . '"';
-
-        $par3WinnerId = DB::table('par3_winners')->insertGetId([
-            'league_id'   => $leagueId,
-            'week_number' => $week,
-            'hole_number' => $hole,
-            'player_id'   => $winnerId,
-            'distance'    => $distance,
-            'created_at'  => now(),
-            'updated_at'  => now(),
-        ]);
-
-        // Create finance entry if league has par3_payout configured
         $par3Payout = (float) DB::table('leagues')->where('id', $leagueId)->value('par3_payout');
-        if ($par3Payout > 0) {
-            DB::table('league_finances')->insert([
-                'league_id'      => $leagueId,
-                'player_id'      => $winnerId,
-                'type'           => 'winnings',
-                'amount'         => $par3Payout,
-                'date'           => $sampleMatch->match_date,
-                'notes'          => 'Par 3 Winner - Week ' . $week . ', Hole ' . $hole,
-                'par3_winner_id' => $par3WinnerId,
-                'created_at'     => now(),
-                'updated_at'     => now(),
-            ]);
-        }
 
-        $playerName = DB::table('players')->where('id', $winnerId)->value(DB::raw("CONCAT(first_name, ' ', last_name)"));
-        $this->line("  🏆 Par 3 Winner: {$playerName} on hole {$hole} ({$distance})" . ($par3Payout > 0 ? " [\${$par3Payout}]" : ''));
+        // Create a winner for each par 3 hole
+        foreach ($par3Holes as $hole) {
+            $winnerId = $playerIds[array_rand($playerIds)];
+            $distance = rand(1, 30) . "'" . rand(0, 11) . '"';
+
+            $par3WinnerId = DB::table('par3_winners')->insertGetId([
+                'league_id'   => $leagueId,
+                'week_number' => $week,
+                'hole_number' => $hole,
+                'player_id'   => $winnerId,
+                'distance'    => $distance,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            // Create finance entry if league has par3_payout configured
+            if ($par3Payout > 0) {
+                DB::table('league_finances')->insert([
+                    'league_id'      => $leagueId,
+                    'player_id'      => $winnerId,
+                    'type'           => 'winnings',
+                    'amount'         => $par3Payout,
+                    'date'           => $sampleMatch->match_date,
+                    'notes'          => 'Par 3 Winner - Week ' . $week . ', Hole ' . $hole,
+                    'par3_winner_id' => $par3WinnerId,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
+
+            $playerName = DB::table('players')->where('id', $winnerId)->value(DB::raw("CONCAT(first_name, ' ', last_name)"));
+            $this->line("  🏆 Par 3 Winner: {$playerName} on hole {$hole} ({$distance})" . ($par3Payout > 0 ? " [\${$par3Payout}]" : ''));
+        }
     }
 
     private function updateTeamRecords(Team $team, int $leagueId): void

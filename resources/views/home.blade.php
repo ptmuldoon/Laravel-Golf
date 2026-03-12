@@ -295,6 +295,121 @@
         .quick-links-menu-inner a + a {
             border-top: 1px solid #f0f0f0;
         }
+        .sub-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .sub-modal-overlay.active {
+            display: flex;
+        }
+        .sub-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .sub-modal h3 {
+            margin: 0 0 20px;
+            font-size: 1.3em;
+            color: var(--primary-color);
+        }
+        .sub-modal label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 0.9em;
+        }
+        .sub-modal select,
+        .sub-modal textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+        .sub-modal select:focus,
+        .sub-modal textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+        }
+        .sub-modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 5px;
+        }
+        .sub-modal-btn {
+            padding: 10px 22px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .sub-modal-btn-cancel {
+            background: #e9ecef;
+            color: #555;
+        }
+        .sub-modal-btn-cancel:hover {
+            background: #dee2e6;
+        }
+        .sub-modal-btn-submit {
+            background: var(--primary-color);
+            color: white;
+        }
+        .sub-modal-btn-submit:hover {
+            background: var(--primary-hover);
+        }
+        .sub-modal-btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .sub-modal-close {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            color: #999;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .sub-modal-close:hover {
+            color: #333;
+        }
+        .sub-modal-status {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            display: none;
+        }
+        .sub-modal-status.success {
+            display: block;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .sub-modal-status.error {
+            display: block;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
         .player-rank {
             font-weight: 600;
             color: var(--primary-color);
@@ -602,6 +717,7 @@
                                     <a href="#" onclick="event.preventDefault(); showQuickLink('schedule', {{ $league->id }})">Full Schedule</a>
                                     <a href="#" onclick="event.preventDefault(); showQuickLink('hole-stats', {{ $league->id }})">Hole Stats</a>
                                     <a href="#" onclick="event.preventDefault(); showQuickLink('player-stats', {{ $league->id }})">Player Stats</a>
+                                    <a href="#" onclick="event.preventDefault(); openSubRequestModal({{ $league->id }})">Sub Request</a>
                                 </div>
                             </div>
                         </div>
@@ -1274,6 +1390,142 @@
                 el.style.display = mode === 'net' ? '' : 'none';
             });
             checkScrollableOverflow();
+        }
+    </script>
+
+    {{-- Sub Request Modal --}}
+    <div class="sub-modal-overlay" id="subRequestModal">
+        <div class="sub-modal">
+            <button class="sub-modal-close" onclick="closeSubRequestModal()">&times;</button>
+            <h3>Request a Sub</h3>
+            <form id="subRequestForm" onsubmit="submitSubRequest(event)">
+                <input type="hidden" id="subLeagueId" name="league_id">
+                <meta name="csrf-token" content="{{ csrf_token() }}">
+
+                <label for="subPlayerId">Your Name</label>
+                <select id="subPlayerId" name="player_id" required>
+                    <option value="">Select your name...</option>
+                </select>
+
+                <label for="subWeekNumber">Week You Need a Sub</label>
+                <select id="subWeekNumber" name="week_number" required>
+                    <option value="">Select week...</option>
+                </select>
+
+                <label for="subMessage">Message (optional)</label>
+                <textarea id="subMessage" name="message" rows="3" maxlength="500" placeholder="Any additional details..."></textarea>
+
+                <div class="sub-modal-actions">
+                    <button type="button" class="sub-modal-btn sub-modal-btn-cancel" onclick="closeSubRequestModal()">Cancel</button>
+                    <button type="submit" class="sub-modal-btn sub-modal-btn-submit" id="subSubmitBtn">Send Request</button>
+                </div>
+
+                <div class="sub-modal-status" id="subRequestStatus"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Build league player data for the sub request modal
+        var leaguePlayerData = {};
+        var leagueWeekData = {};
+        @foreach($activeLeagues as $league)
+            leaguePlayerData[{{ $league->id }}] = [
+                @php
+                    $allPlayers = $league->teams->flatMap->players->unique('id')->sortBy(fn($p) => $p->last_name . $p->first_name);
+                @endphp
+                @foreach($allPlayers as $p)
+                    { id: {{ $p->id }}, name: "{{ e($p->first_name . ' ' . $p->last_name) }}" },
+                @endforeach
+            ];
+            leagueWeekData[{{ $league->id }}] = {{ DB::table('matches')->where('league_id', $league->id)->max('week_number') ?? 16 }};
+        @endforeach
+
+        function openSubRequestModal(leagueId) {
+            document.getElementById('subLeagueId').value = leagueId;
+
+            // Populate players dropdown
+            var playerSelect = document.getElementById('subPlayerId');
+            playerSelect.innerHTML = '<option value="">Select your name...</option>';
+            var players = leaguePlayerData[leagueId] || [];
+            players.forEach(function(p) {
+                var opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                playerSelect.appendChild(opt);
+            });
+
+            // Populate week dropdown
+            var weekSelect = document.getElementById('subWeekNumber');
+            weekSelect.innerHTML = '<option value="">Select week...</option>';
+            var maxWeek = leagueWeekData[leagueId] || 16;
+            for (var w = 1; w <= maxWeek; w++) {
+                var opt = document.createElement('option');
+                opt.value = w;
+                opt.textContent = 'Week ' + w;
+                weekSelect.appendChild(opt);
+            }
+
+            // Reset form state
+            document.getElementById('subMessage').value = '';
+            document.getElementById('subSubmitBtn').disabled = false;
+            document.getElementById('subSubmitBtn').textContent = 'Send Request';
+            document.getElementById('subRequestStatus').className = 'sub-modal-status';
+            document.getElementById('subRequestStatus').style.display = 'none';
+
+            document.getElementById('subRequestModal').classList.add('active');
+        }
+
+        function closeSubRequestModal() {
+            document.getElementById('subRequestModal').classList.remove('active');
+        }
+
+        // Close modal on overlay click
+        document.getElementById('subRequestModal').addEventListener('click', function(e) {
+            if (e.target === this) closeSubRequestModal();
+        });
+
+        function submitSubRequest(e) {
+            e.preventDefault();
+            var btn = document.getElementById('subSubmitBtn');
+            var status = document.getElementById('subRequestStatus');
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            status.style.display = 'none';
+
+            var formData = new FormData(document.getElementById('subRequestForm'));
+
+            fetch('{{ route("requestSub") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    status.className = 'sub-modal-status success';
+                    status.textContent = data.message;
+                    status.style.display = 'block';
+                    btn.textContent = 'Sent!';
+                    setTimeout(closeSubRequestModal, 2500);
+                } else {
+                    status.className = 'sub-modal-status error';
+                    status.textContent = data.message || 'Something went wrong.';
+                    status.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Send Request';
+                }
+            })
+            .catch(function() {
+                status.className = 'sub-modal-status error';
+                status.textContent = 'Failed to send request. Please try again.';
+                status.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Send Request';
+            });
         }
     </script>
 </body>

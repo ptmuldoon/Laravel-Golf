@@ -8,7 +8,12 @@ use App\Models\LeagueSegment;
 use App\Models\MatchPlayer;
 use App\Models\MatchResult;
 use App\Models\Par3Winner;
+use App\Mail\SubRequestEmail;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class HomeController extends Controller
@@ -983,5 +988,84 @@ class HomeController extends Controller
         if ($myWins > $oppWins) return 'win';
         if ($oppWins > $myWins) return 'loss';
         return 'tie';
+    }
+
+    /**
+     * Handle a sub request - send email and SMS to league administrators.
+     */
+    public function requestSub(Request $request)
+    {
+        $validated = $request->validate([
+            'league_id' => 'required|integer|exists:leagues,id',
+            'player_id' => 'required|integer|exists:players,id',
+            'week_number' => 'required|integer|min:1',
+            'message' => 'nullable|string|max:500',
+        ]);
+
+        $league = League::findOrFail($validated['league_id']);
+        $player = DB::table('players')->where('id', $validated['player_id'])->first();
+        $playerName = $player->first_name . ' ' . $player->last_name;
+        $weekNumber = $validated['week_number'];
+        $message = $validated['message'] ?? '';
+
+        // Get admin users with notification preferences
+        $admins = DB::table('users')->where('is_admin', true)->get();
+
+        $adminEmails = $admins->where('email_notifications', true)
+            ->pluck('email')
+            ->filter()
+            ->toArray();
+
+        $adminPhones = $admins->where('sms_notifications', true)
+            ->whereNotNull('phone_number')
+            ->where('phone_number', '!=', '')
+            ->pluck('phone_number')
+            ->toArray();
+
+        $emailSent = 0;
+        $smsSent = 0;
+
+        // Send email to admins with email notifications enabled
+        if (!empty($adminEmails)) {
+            try {
+                $mailable = new SubRequestEmail($league, $playerName, $weekNumber, $message);
+                Mail::to(config('mail.from.address'))
+                    ->bcc($adminEmails)
+                    ->send($mailable);
+                $emailSent = count($adminEmails);
+            } catch (\Exception $e) {
+                Log::error("Sub request email failed: " . $e->getMessage());
+            }
+        }
+
+        // Send SMS to admins with SMS notifications enabled
+        if (!empty($adminPhones)) {
+            try {
+                $smsBody = "{$league->name}: Sub needed - {$playerName} for Week {$weekNumber}";
+                if ($message) {
+                    $smsBody .= " - \"{$message}\"";
+                }
+
+                $sms = new SmsService();
+                $formatted = collect($adminPhones)
+                    ->map(fn($p) => SmsService::formatPhoneNumber($p))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->toArray();
+
+                if (!empty($formatted)) {
+                    $result = $sms->sendBulkSms($formatted, $smsBody);
+                    $smsSent = $result['sent'];
+                }
+            } catch (\Exception $e) {
+                Log::error("Sub request SMS failed: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Sub request sent! ({$emailSent} email" . ($emailSent !== 1 ? 's' : '') . ", {$smsSent} SMS)",
+        ]);
     }
 }

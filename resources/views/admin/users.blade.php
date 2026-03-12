@@ -229,7 +229,9 @@
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
+                        <th>Phone</th>
                         <th>Role</th>
+                        <th style="text-align: center;">Notifications</th>
                         <th>Created</th>
                         <th>Actions</th>
                     </tr>
@@ -244,6 +246,7 @@
                                 @endif
                             </td>
                             <td>{{ $user->email }}</td>
+                            <td style="font-size: 0.85em; color: #666;">{{ $user->phone_number ?? '-' }}</td>
                             <td>
                                 @if($user->is_super_admin)
                                     <span class="badge badge-admin" style="background: var(--secondary-color);">Super Admin</span>
@@ -252,6 +255,10 @@
                                 @else
                                     <span class="badge badge-user">User</span>
                                 @endif
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;">
+                                <span title="Email {{ $user->email_notifications ? 'enabled' : 'disabled' }}" style="opacity: {{ $user->email_notifications ? '1' : '0.3' }};">📧</span>
+                                <span title="SMS {{ $user->sms_notifications ? 'enabled' : 'disabled' }}" style="opacity: {{ $user->sms_notifications ? '1' : '0.3' }};">💬</span>
                             </td>
                             <td>{{ $user->created_at->format('M d, Y') }}</td>
                             <td>
