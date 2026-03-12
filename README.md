@@ -139,8 +139,8 @@ Beyond the standard Laravel variables, the app uses:
 | `VONAGE_SECRET` | Vonage API secret |
 | `VONAGE_SMS_FROM` | Vonage sender phone number |
 | `SLOGAN_NAME` | Custom slogan displayed in the UI |
-| `SHOW_LOGO` | Show/hide the site logo on the home page (default: `true`) |
-| `SHOW_ICONS` | Show/hide the beer mug icons on the home page (default: `true`) |
+| `SHOW_LOGO` | Show/hide the site logo on the home page (default: `false`) |
+| `SHOW_ICONS` | Show/hide the beer mug icons on the home page (default: `false`) |
 
 Google Drive backup credentials are uploaded through the admin UI (service account JSON).
 

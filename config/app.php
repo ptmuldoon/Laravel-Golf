@@ -17,9 +17,11 @@ return [
 
     'slogan' => env('SLOGAN_NAME', ''),
 
-    'show_logo' => env('SHOW_LOGO', true),
+    'show_logo' => env('SHOW_LOGO', false),
 
-    'show_icons' => env('SHOW_ICONS', true),
+    'logo' => env('APP_LOGO', '/images/logo3.svg'),
+
+    'show_icons' => env('SHOW_ICONS', false),
 
     /*
     |--------------------------------------------------------------------------
