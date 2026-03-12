@@ -1402,6 +1402,12 @@
                 <input type="hidden" id="subLeagueId" name="league_id">
                 <meta name="csrf-token" content="{{ csrf_token() }}">
 
+                <div id="subCodeGroup">
+                    <label for="subLeagueCode">League Code</label>
+                    <input type="text" id="subLeagueCode" name="league_code" placeholder="Enter the league code..." autocomplete="off">
+                    <div style="font-size: 0.8em; color: #888; margin-top: 4px; margin-bottom: 10px;">Ask your league administrator for this code.</div>
+                </div>
+
                 <label for="subPlayerId">Your Name</label>
                 <select id="subPlayerId" name="player_id" required>
                     <option value="">Select your name...</option>
@@ -1429,6 +1435,7 @@
         // Build league player data for the sub request modal
         var leaguePlayerData = {};
         var leagueWeekData = {};
+        var leagueHasCode = {};
         @foreach($activeLeagues as $league)
             leaguePlayerData[{{ $league->id }}] = [
                 @php
@@ -1439,6 +1446,7 @@
                 @endforeach
             ];
             leagueWeekData[{{ $league->id }}] = {{ DB::table('matches')->where('league_id', $league->id)->max('week_number') ?? 16 }};
+            leagueHasCode[{{ $league->id }}] = {{ $league->sub_request_code ? 'true' : 'false' }};
         @endforeach
 
         function openSubRequestModal(leagueId) {
@@ -1465,6 +1473,18 @@
                 opt.textContent = 'Week ' + w;
                 weekSelect.appendChild(opt);
             }
+
+            // Show/hide league code field
+            var codeGroup = document.getElementById('subCodeGroup');
+            var codeInput = document.getElementById('subLeagueCode');
+            if (leagueHasCode[leagueId]) {
+                codeGroup.style.display = '';
+                codeInput.required = true;
+            } else {
+                codeGroup.style.display = 'none';
+                codeInput.required = false;
+            }
+            codeInput.value = '';
 
             // Reset form state
             document.getElementById('subMessage').value = '';
@@ -1503,7 +1523,12 @@
                 },
                 body: formData,
             })
-            .then(function(response) { return response.json(); })
+            .then(function(response) {
+                if (response.status === 429) {
+                    return { success: false, message: 'Too many requests. Please try again later.' };
+                }
+                return response.json();
+            })
             .then(function(data) {
                 if (data.success) {
                     status.className = 'sub-modal-status success';

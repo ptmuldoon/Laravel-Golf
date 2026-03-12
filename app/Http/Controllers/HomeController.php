@@ -1000,9 +1000,20 @@ class HomeController extends Controller
             'player_id' => 'required|integer|exists:players,id',
             'week_number' => 'required|integer|min:1',
             'message' => 'nullable|string|max:500',
+            'league_code' => 'nullable|string|max:50',
         ]);
 
         $league = League::findOrFail($validated['league_id']);
+
+        // Verify league code if one is set
+        if ($league->sub_request_code) {
+            if (empty($validated['league_code']) || $validated['league_code'] !== $league->sub_request_code) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid league code. Please check with your league administrator.',
+                ], 422);
+            }
+        }
         $player = DB::table('players')->where('id', $validated['player_id'])->first();
         $playerName = $player->first_name . ' ' . $player->last_name;
         $weekNumber = $validated['week_number'];

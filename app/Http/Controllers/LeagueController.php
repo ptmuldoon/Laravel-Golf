@@ -78,6 +78,7 @@ class LeagueController extends Controller
             'payout_1st_pct' => 'nullable|numeric|min:0|max:100',
             'payout_2nd_pct' => 'nullable|numeric|min:0|max:100',
             'payout_3rd_pct' => 'nullable|numeric|min:0|max:100',
+            'sub_request_code' => 'nullable|string|max:50',
         ]);
 
         $league = League::create($validated);
@@ -183,6 +184,7 @@ class LeagueController extends Controller
             'payout_1st_pct' => 'nullable|numeric|min:0|max:100',
             'payout_2nd_pct' => 'nullable|numeric|min:0|max:100',
             'payout_3rd_pct' => 'nullable|numeric|min:0|max:100',
+            'sub_request_code' => 'nullable|string|max:50',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active');

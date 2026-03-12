@@ -19,6 +19,7 @@ class League extends Model
         'payout_1st_pct',
         'payout_2nd_pct',
         'payout_3rd_pct',
+        'sub_request_code',
     ];
 
     protected $casts = [

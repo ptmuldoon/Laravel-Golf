@@ -165,7 +165,7 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
 
 // Home route - shows weekly league results
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::post('/request-sub', [HomeController::class, 'requestSub'])->name('requestSub');
+Route::post('/request-sub', [HomeController::class, 'requestSub'])->name('requestSub')->middleware('throttle:5,60');
 Route::get('/privacy', fn () => view('privacy'))->name('privacy');
 Route::get('/sms-terms', fn () => view('sms-terms'))->name('sms-terms');
 

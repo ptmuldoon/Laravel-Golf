@@ -218,6 +218,15 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label for="sub_request_code">Sub Request Code</label>
+                    <input type="text" id="sub_request_code" name="sub_request_code" value="{{ old('sub_request_code') }}" placeholder="e.g., golf2026" maxlength="50">
+                    @error('sub_request_code')
+                        <div class="error">{{ $message }}</div>
+                    @enderror
+                    <div class="help-text">Players must enter this code to submit a sub request from the public site. Leave blank to disable sub requests.</div>
+                </div>
+
                 <h2 style="color: var(--primary-color); font-size: 1.3em; margin: 30px 0 15px; padding-top: 20px; border-top: 2px solid #f0f0f0;">Fees & Payouts</h2>
 
                 <div class="form-row">
