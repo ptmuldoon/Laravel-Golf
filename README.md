@@ -139,6 +139,7 @@ Beyond the standard Laravel variables, the app uses:
 | `VONAGE_SECRET` | Vonage API secret |
 | `VONAGE_SMS_FROM` | Vonage sender phone number |
 | `SLOGAN_NAME` | Custom slogan displayed in the UI |
+| `APP_LOGO` | Path to the logo image file (default: `/images/logo3.svg`) |
 | `SHOW_LOGO` | Show/hide the site logo on the home page (default: `false`) |
 | `SHOW_ICONS` | Show/hide the beer mug icons on the home page (default: `false`) |
 
