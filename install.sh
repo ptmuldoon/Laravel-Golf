@@ -139,6 +139,7 @@ prompt -rp "Proceed? [y/N]: " CONFIRM
 step "Installing system packages"
 
 export DEBIAN_FRONTEND=noninteractive
+export COMPOSER_NO_INTERACTION=1
 
 apt-get update -qq < /dev/null
 apt-get install -y -qq software-properties-common < /dev/null
