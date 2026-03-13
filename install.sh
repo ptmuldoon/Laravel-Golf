@@ -181,7 +181,7 @@ fi
 if ! command -v composer &>/dev/null; then
     info "Installing Composer..."
     curl -sS https://getcomposer.org/installer -o /tmp/composer-setup.php
-    php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer --quiet
+    php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer --quiet < /dev/null
     rm -f /tmp/composer-setup.php
 fi
 
