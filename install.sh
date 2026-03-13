@@ -173,7 +173,7 @@ systemctl stop nginx &>/dev/null || true
 # Node.js via NodeSource (LTS)
 if ! command -v node &>/dev/null; then
     info "Installing Node.js LTS..."
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - &>/dev/null
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - &>/dev/null < /dev/null
     apt-get install -y -qq nodejs
 fi
 
