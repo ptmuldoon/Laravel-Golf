@@ -2,11 +2,8 @@
 set -euo pipefail
 
 # ─── Usage ───────────────────────────────────────────────────────────────────
-# Option 1 – Run directly via curl (private repo – requires a GitHub PAT):
-#   export GITHUB_TOKEN="ghp_your_token_here"
-#   curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
-#     https://raw.githubusercontent.com/ptmuldoon/Laravel-Golf/main/install.sh \
-#     | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
+# Option 1 – One-line install:
+#   curl -fsSL https://raw.githubusercontent.com/ptmuldoon/Laravel-Golf/main/install.sh | sudo bash
 #
 # Option 2 – Clone first, then run:
 #   git clone https://github.com/ptmuldoon/Laravel-Golf.git
@@ -57,12 +54,9 @@ if $NEED_CLONE; then
     prompt -rp "Install directory [/var/www/html/golf]: " INSTALL_DIR
     INSTALL_DIR="${INSTALL_DIR:-/var/www/html/golf}"
 
-    # Prompt for GitHub token if not set (needed for private repo)
+    # GitHub token is optional (only needed for private repos)
     if [[ -z "$GITHUB_TOKEN" ]]; then
-        warn "Repository is private. A GitHub Personal Access Token (PAT) is required."
-        prompt -rsp "GitHub token: " GITHUB_TOKEN
-        echo
-        [[ -z "$GITHUB_TOKEN" ]] && error "GitHub token cannot be empty for private repo access."
+        info "No GitHub token set. Using public repo access."
     fi
 fi
 
