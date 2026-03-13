@@ -69,8 +69,8 @@ fi
 # ─── Gather configuration ─────────────────────────────────────────────────────
 step "Configuration"
 
-prompt -rp "App name            [Tuesday Golf League]: " APP_NAME
-APP_NAME="${APP_NAME:-Tuesday Golf League}"
+prompt -rp "App name            [Laravel Golf]: " APP_NAME
+APP_NAME="${APP_NAME:-Laravel Golf}"
 
 prompt -rp "Nginx server_name   [_]: " SERVER_NAME
 SERVER_NAME="${SERVER_NAME:-_}"
