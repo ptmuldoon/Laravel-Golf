@@ -75,6 +75,16 @@ A full-featured golf league management application built with Laravel. Manage le
 - Generate realistic simulated scores for testing
 - `php artisan league:simulate {league_id} --weeks=8`
 
+## Screenshots
+
+![Home Page](docs/screenshots/home.png)
+![League Dashboard](docs/screenshots/league-dashboard.png)
+![Standings](docs/screenshots/standings.png)
+![Score Entry](docs/screenshots/score-entry.png)
+![Schedule](docs/screenshots/full-schedule.png)
+![Print Scorecards](docs/screenshots/print-scorecards.png)
+![League Settings](docs/screenshots/league-settings.png)
+
 ## Tech Stack
 
 - **Backend:** PHP 8.2+ / Laravel 12
