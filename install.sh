@@ -434,6 +434,14 @@ php artisan key:generate --force
 info "Running database migrations..."
 php artisan migrate --force
 
+# Optionally seed demo data (courses + demo league)
+prompt -rp "Seed demo data (5 courses + demo league)? [y/N]: " SEED_DEMO < /dev/tty
+if [[ "${SEED_DEMO,,}" == "y" ]]; then
+    info "Seeding demo data..."
+    php artisan db:seed --force
+    success "Demo data seeded (5 courses + demo league with 5 weeks played)."
+fi
+
 # Switch to database-backed drivers now that migration has created the tables
 set_env SESSION_DRIVER  "database"
 set_env CACHE_STORE     "database"
