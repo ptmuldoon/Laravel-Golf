@@ -3,14 +3,14 @@ set -euo pipefail
 
 # ─── Usage ───────────────────────────────────────────────────────────────────
 # Option 1 – One-line install:
-#   curl -fsSL https://raw.githubusercontent.com/ptmuldoon/laravel-golf-league-manager/main/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/ptmuldoon/Laravel-Golf-League-Manager/main/install.sh | sudo bash
 #
 # Option 2 – Clone first, then run:
-#   git clone https://github.com/ptmuldoon/laravel-golf-league-manager.git
-#   cd laravel-golf-league-manager && sudo bash install.sh
+#   git clone https://github.com/ptmuldoon/Laravel-Golf-League-Manager.git
+#   cd Laravel-Golf-League-Manager && sudo bash install.sh
 # ─────────────────────────────────────────────────────────────────────────────
 
-REPO_URL="https://github.com/ptmuldoon/laravel-golf-league-manager.git"
+REPO_URL="https://github.com/ptmuldoon/Laravel-Golf-League-Manager.git"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 # ─── Colours ──────────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ if $NEED_CLONE; then
 
     # Use GITHUB_TOKEN for private repo access when available
     if [[ -n "$GITHUB_TOKEN" ]]; then
-        CLONE_URL="https://${GITHUB_TOKEN}@github.com/ptmuldoon/laravel-golf-league-manager.git"
+        CLONE_URL="https://${GITHUB_TOKEN}@github.com/ptmuldoon/Laravel-Golf-League-Manager.git"
     else
         CLONE_URL="$REPO_URL"
     fi

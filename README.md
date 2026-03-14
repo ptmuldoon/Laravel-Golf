@@ -101,13 +101,13 @@ The install script sets up everything on a fresh Debian/Ubuntu server: PHP 8.4, 
 
 **Option 1 — One-line install:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ptmuldoon/laravel-golf-league-manager/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/ptmuldoon/Laravel-Golf-League-Manager/main/install.sh | sudo bash
 ```
 
 **Option 2 — Clone first:**
 ```bash
-git clone https://github.com/ptmuldoon/laravel-golf-league-manager.git
-cd laravel-golf-league-manager && sudo bash install.sh
+git clone https://github.com/ptmuldoon/Laravel-Golf-League-Manager.git
+cd Laravel-Golf-League-Manager && sudo bash install.sh
 ```
 
 The script will prompt for:
