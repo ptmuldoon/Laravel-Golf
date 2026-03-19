@@ -73,6 +73,8 @@ class LeagueController extends Controller
             'end_date' => 'required|date|after:start_date',
             'golf_course_id' => 'required|exists:golf_courses,id',
             'default_teebox' => 'required|string',
+            'default_tee_time' => 'nullable|date_format:H:i',
+            'tee_time_interval' => 'nullable|integer|min:1|max:30',
             'fee_per_player' => 'nullable|numeric|min:0',
             'par3_payout' => 'nullable|numeric|min:0',
             'payout_1st_pct' => 'nullable|numeric|min:0|max:100',
@@ -178,6 +180,8 @@ class LeagueController extends Controller
             'end_date' => 'required|date|after:start_date',
             'golf_course_id' => 'required|exists:golf_courses,id',
             'default_teebox' => 'required|string',
+            'default_tee_time' => 'nullable|date_format:H:i',
+            'tee_time_interval' => 'nullable|integer|min:1|max:30',
             'is_active' => 'boolean',
             'fee_per_player' => 'nullable|numeric|min:0',
             'par3_payout' => 'nullable|numeric|min:0',
@@ -242,6 +246,8 @@ class LeagueController extends Controller
                 'end_date' => $source->end_date,
                 'golf_course_id' => $source->golf_course_id,
                 'default_teebox' => $source->default_teebox,
+                'default_tee_time' => $source->default_tee_time,
+                'tee_time_interval' => $source->tee_time_interval,
                 'is_active' => false,
                 'fee_per_player' => $source->fee_per_player,
                 'par3_payout' => $source->par3_payout,
@@ -962,19 +968,26 @@ class LeagueController extends Controller
         $lastScoringType = $lastMatch->scoring_type ?? 'best_ball_match_play';
         $lastScoreMode = $lastMatch->score_mode ?? 'net';
 
-        // Get tee time settings from the last week
-        $lastWeekMatches = $league->matches()->where('week_number', $maxWeek)->orderBy('tee_time')->get();
-        $startTeeTime = $lastWeekMatches->first()->tee_time
-            ? \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time)->format('H:i')
-            : '16:40';
+        // Get tee time settings from league settings, falling back to last week's matches
+        $startTeeTime = $league->default_tee_time
+            ? \Carbon\Carbon::parse($league->default_tee_time)->format('H:i')
+            : null;
+        $teeTimeInterval = $league->tee_time_interval ?? null;
 
-        // Calculate tee time interval from existing matches
-        $teeTimeInterval = 10;
-        if ($lastWeekMatches->count() >= 2) {
-            $first = \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time);
-            $second = \Carbon\Carbon::parse($lastWeekMatches->skip(1)->first()->tee_time);
-            $teeTimeInterval = max(5, $first->diffInMinutes($second));
+        if (!$startTeeTime || !$teeTimeInterval) {
+            $lastWeekMatches = $league->matches()->where('week_number', $maxWeek)->orderBy('tee_time')->get();
+            if (!$startTeeTime) {
+                $startTeeTime = $lastWeekMatches->first()->tee_time
+                    ? \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time)->format('H:i')
+                    : '16:40';
+            }
+            if (!$teeTimeInterval && $lastWeekMatches->count() >= 2) {
+                $first = \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time);
+                $second = \Carbon\Carbon::parse($lastWeekMatches->skip(1)->first()->tee_time);
+                $teeTimeInterval = max(5, $first->diffInMinutes($second));
+            }
         }
+        $teeTimeInterval = $teeTimeInterval ?? 10;
 
         $scheduler = new \App\Services\LeagueScheduler(app(\App\Services\MatchPlayCalculator::class));
 
@@ -1039,20 +1052,27 @@ class LeagueController extends Controller
             $matchesPerWeek = max(1, (int) ceil($league->players->count() / 4));
         }
 
-        // Get tee time settings from the last week
-        $startTeeTime = '16:40';
-        $teeTimeInterval = 10;
-        if ($lastMatch) {
-            $lastWeekMatches = $league->matches()->where('week_number', $maxWeek)->orderBy('tee_time')->get();
-            if ($lastWeekMatches->first()->tee_time) {
-                $startTeeTime = \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time)->format('H:i');
-            }
-            if ($lastWeekMatches->count() >= 2) {
-                $first = \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time);
-                $second = \Carbon\Carbon::parse($lastWeekMatches->skip(1)->first()->tee_time);
-                $teeTimeInterval = max(5, $first->diffInMinutes($second));
+        // Get tee time settings from league settings, falling back to last week's matches
+        $startTeeTime = $league->default_tee_time
+            ? \Carbon\Carbon::parse($league->default_tee_time)->format('H:i')
+            : null;
+        $teeTimeInterval = $league->tee_time_interval ?? null;
+
+        if (!$startTeeTime || !$teeTimeInterval) {
+            if ($lastMatch) {
+                $lastWeekMatches = $league->matches()->where('week_number', $maxWeek)->orderBy('tee_time')->get();
+                if (!$startTeeTime && $lastWeekMatches->first()->tee_time) {
+                    $startTeeTime = \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time)->format('H:i');
+                }
+                if (!$teeTimeInterval && $lastWeekMatches->count() >= 2) {
+                    $first = \Carbon\Carbon::parse($lastWeekMatches->first()->tee_time);
+                    $second = \Carbon\Carbon::parse($lastWeekMatches->skip(1)->first()->tee_time);
+                    $teeTimeInterval = max(5, $first->diffInMinutes($second));
+                }
             }
         }
+        $startTeeTime = $startTeeTime ?? '16:40';
+        $teeTimeInterval = $teeTimeInterval ?? 10;
 
         $additionalWeeks = $validated['additional_weeks'];
         $newHoles = ($lastHoles === 'front_9') ? 'back_9' : 'front_9';

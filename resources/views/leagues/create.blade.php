@@ -72,6 +72,7 @@
         input[type="text"],
         input[type="date"],
         input[type="number"],
+        input[type="time"],
         select {
             width: 100%;
             padding: 12px 15px;
@@ -215,6 +216,25 @@
                         @error('default_teebox')
                             <div class="error">{{ $message }}</div>
                         @enderror
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="default_tee_time">Default Starting Tee Time</label>
+                        <input type="time" id="default_tee_time" name="default_tee_time" value="{{ old('default_tee_time') }}">
+                        @error('default_tee_time')
+                            <div class="error">{{ $message }}</div>
+                        @enderror
+                        <div class="help-text">First tee time for league play (e.g., 4:30 PM)</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="tee_time_interval">Tee Time Interval (minutes)</label>
+                        <input type="number" id="tee_time_interval" name="tee_time_interval" value="{{ old('tee_time_interval', 8) }}" min="1" max="30" step="1">
+                        @error('tee_time_interval')
+                            <div class="error">{{ $message }}</div>
+                        @enderror
+                        <div class="help-text">Minutes between each tee time</div>
                     </div>
                 </div>
 

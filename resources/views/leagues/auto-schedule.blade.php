@@ -97,12 +97,12 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
                     <div>
                         <label style="display: block; font-weight: 600; color: #333; margin-bottom: 8px;">First Tee Time</label>
-                        <input type="time" name="start_tee_time" value="16:40" required style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;">
+                        <input type="time" name="start_tee_time" value="{{ $league->default_tee_time ? \Carbon\Carbon::parse($league->default_tee_time)->format('H:i') : '16:40' }}" required style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;">
                         <div style="font-size: 0.85em; color: #666; margin-top: 5px;">Starting tee time for the first group</div>
                     </div>
                     <div>
                         <label style="display: block; font-weight: 600; color: #333; margin-bottom: 8px;">Tee Time Interval (minutes)</label>
-                        <input type="number" name="tee_time_interval" value="10" min="5" max="30" required style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;">
+                        <input type="number" name="tee_time_interval" value="{{ $league->tee_time_interval ?? 10 }}" min="5" max="30" required style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 1em;">
                         <div style="font-size: 0.85em; color: #666; margin-top: 5px;">Minutes between each group's tee time</div>
                     </div>
                 </div>

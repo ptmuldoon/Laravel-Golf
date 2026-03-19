@@ -20,6 +20,8 @@ class League extends Model
         'payout_2nd_pct',
         'payout_3rd_pct',
         'sub_request_code',
+        'default_tee_time',
+        'tee_time_interval',
     ];
 
     protected $casts = [
