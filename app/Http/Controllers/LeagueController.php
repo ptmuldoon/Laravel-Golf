@@ -19,6 +19,7 @@ use App\Models\Player;
 use App\Models\Round;
 use App\Models\Score;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\HandicapCalculator;
 use App\Services\MatchPlayCalculator;
 use App\Services\SmsService;
@@ -1830,13 +1831,27 @@ class LeagueController extends Controller
                 $data['nextWeekMatches'], $data['nextWeekTeamNames']
             );
 
+            $adminEmails = User::where('is_admin', true)
+                ->where('email_notifications', true)
+                ->whereNotNull('email')
+                ->where('email', '!=', '')
+                ->pluck('email')
+                ->unique()
+                ->toArray();
+
             if ($testEmail) {
-                Mail::to($recipients)->send($mailable);
+                $mail = Mail::to($recipients);
             } else {
-                Mail::to(config('mail.from.address'))
-                    ->bcc($recipients)
-                    ->send($mailable);
+                $mail = Mail::to(config('mail.from.address'))
+                    ->bcc($recipients);
             }
+
+            if (!empty($adminEmails)) {
+                $mail->cc($adminEmails);
+                $mailable->replyTo($adminEmails);
+            }
+
+            $mail->send($mailable);
 
             $successMsg = $testEmail
                 ? "Test email for Week {$weekNumber} results sent to " . implode(', ', $recipients) . "!"
@@ -1903,13 +1918,27 @@ class LeagueController extends Controller
         try {
             $mailable = new LeagueMessageEmail($league, $validated['subject'], $validated['message_body']);
 
+            $adminEmails = User::where('is_admin', true)
+                ->where('email_notifications', true)
+                ->whereNotNull('email')
+                ->where('email', '!=', '')
+                ->pluck('email')
+                ->unique()
+                ->toArray();
+
             if ($testEmail) {
-                Mail::to($recipients)->send($mailable);
+                $mail = Mail::to($recipients);
             } else {
-                Mail::to(config('mail.from.address'))
-                    ->bcc($recipients)
-                    ->send($mailable);
+                $mail = Mail::to(config('mail.from.address'))
+                    ->bcc($recipients);
             }
+
+            if (!empty($adminEmails)) {
+                $mail->cc($adminEmails);
+                $mailable->replyTo($adminEmails);
+            }
+
+            $mail->send($mailable);
 
             $successMsg = $testEmail
                 ? "Test message sent to " . implode(', ', $recipients) . "!"
