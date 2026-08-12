@@ -3288,10 +3288,13 @@ class LeagueController extends Controller
                     $player = $entries->first()->player;
                     $matchesPlayed = $entries->count();
 
-                    // Exclude scramble rounds — the recorded scores are the team's
-                    // scramble scores, not the player's own round.
+                    // Exclude scramble rounds (the recorded scores are the team's
+                    // scramble scores, not the player's own round) and rounds a
+                    // substitute played in this slot (those scores are the sub's).
                     $matchTotals = $entries
-                        ->reject(fn($mp) => ($mp->match->scoring_type ?? null) === 'scramble')
+                        ->reject(fn($mp) => ($mp->match->scoring_type ?? null) === 'scramble'
+                            || $mp->substitute_player_id !== null
+                            || $mp->substitute_name !== null)
                         ->map(function ($mp) {
                             $total = $mp->scores->sum('strokes');
                             return $total > 0 ? $total : null;
