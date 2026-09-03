@@ -142,6 +142,7 @@ Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
     Route::post('/leagues/{league_id}/sms-message', [LeagueController::class, 'sendSmsMessage'])->name('leagues.sendSmsMessage');
     // League finance routes
     Route::get('/leagues/{league_id}/hole-stats', [LeagueController::class, 'holeStats'])->name('leagues.holeStats');
+    Route::get('/leagues/{league_id}/season-recap', [LeagueController::class, 'seasonRecap'])->name('leagues.seasonRecap');
     Route::get('/leagues/{league_id}/partner-contribution', [LeagueController::class, 'partnerContribution'])->name('leagues.partnerContribution');
     Route::get('/leagues/{league_id}/tee-time-distribution', [LeagueController::class, 'teeTimeDistribution'])->name('leagues.teeTimeDistribution');
     Route::get('/leagues/{league_id}/partner-distribution', [LeagueController::class, 'partnerDistribution'])->name('leagues.partnerDistribution');
@@ -206,6 +207,8 @@ Route::get('/matches/{id}', [MatchController::class, 'show'])->name('matches.sho
 
 Route::get('/leagues/{league_id}/hole-stats', [LeagueController::class, 'holeStats'])->name('leagues.holeStats');
 Route::get('/leagues/{league_id}/hole-stats-partial', [LeagueController::class, 'holeStatsPartial'])->name('leagues.holeStatsPartial');
+Route::get('/leagues/{league_id}/season-recap', [LeagueController::class, 'seasonRecap'])->name('leagues.seasonRecap');
+Route::get('/leagues/{league_id}/season-recap-partial', [LeagueController::class, 'seasonRecapPartial'])->name('leagues.seasonRecapPartial');
 Route::get('/leagues/{league_id}/week-results-partial/{week}', [HomeController::class, 'weekResultsPartial'])->name('leagues.weekResultsPartial');
 Route::get('/leagues/{league_id}/schedule-partial', [LeagueController::class, 'schedulePartial'])->name('leagues.schedulePartial');
 Route::get('/leagues/{league_id}/player-stats-partial', [LeagueController::class, 'playerStatsPartial'])->name('leagues.playerStatsPartial');

@@ -2618,6 +2618,27 @@ class LeagueController extends Controller
     }
 
     /**
+     * End-of-season recap: final standings, awards and season records.
+     */
+    public function seasonRecap($leagueId)
+    {
+        return view('leagues.season-recap', $this->buildSeasonRecap($leagueId));
+    }
+
+    public function seasonRecapPartial($leagueId)
+    {
+        return view('leagues.season-recap-partial', $this->buildSeasonRecap($leagueId));
+    }
+
+    private function buildSeasonRecap($leagueId): array
+    {
+        $league = League::with(['teams.players', 'segments.teams.players', 'golfCourse'])
+            ->findOrFail($leagueId);
+
+        return (new \App\Services\SeasonRecapBuilder())->build($league);
+    }
+
+    /**
      * Update the per-league flash message and its on/off toggle.
      */
     public function updateFlashMessage(Request $request, $leagueId)

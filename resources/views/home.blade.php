@@ -260,6 +260,15 @@
         .quick-links-btn:hover {
             background: var(--secondary-color);
         }
+        /* Season Recap only appears once the season is over, so it gets to stand
+           out from the everyday links next to it. */
+        .quick-links-btn-recap {
+            background: #b8860b;
+            box-shadow: 0 0 0 2px rgba(184, 134, 11, 0.25);
+        }
+        .quick-links-btn-recap:hover {
+            background: #966d09;
+        }
         .quick-links-menu {
             display: none;
             position: absolute;
@@ -782,6 +791,9 @@
                         <a href="#" onclick="event.preventDefault(); showQuickLink('hole-stats', {{ $league->id }})" class="quick-links-btn" style="text-decoration: none; display: inline-block;">Hole Stats</a>
                         <a href="#" onclick="event.preventDefault(); showQuickLink('player-stats', {{ $league->id }})" class="quick-links-btn" style="text-decoration: none; display: inline-block;">Player Stats</a>
                         <a href="#" onclick="event.preventDefault(); showQuickLink('player-history', {{ $league->id }})" class="quick-links-btn" style="text-decoration: none; display: inline-block;">Player History</a>
+                        @if($league->isSeasonComplete())
+                            <a href="#" onclick="event.preventDefault(); showQuickLink('season-recap', {{ $league->id }})" class="quick-links-btn quick-links-btn-recap" style="text-decoration: none; display: inline-block;">🏆 Season Recap</a>
+                        @endif
                         <a href="#" onclick="event.preventDefault(); showQuickLink('finances', {{ $league->id }})" class="quick-links-btn" style="text-decoration: none; display: inline-block;">Finances</a>
                         <a href="#" onclick="event.preventDefault(); openSubRequestModal({{ $league->id }})" class="quick-links-btn" style="text-decoration: none; display: inline-block;">Sub Request</a>
                     </div>

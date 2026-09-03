@@ -385,6 +385,9 @@
                 <a href="{{ route('admin.leagues.holeStats', $league->id) }}" class="btn btn-primary">
                     Hole Stats
                 </a>
+                <a href="{{ route('admin.leagues.seasonRecap', $league->id) }}" class="btn btn-primary">
+                    Season Recap
+                </a>
                 <a href="{{ route('admin.leagues.partnerContribution', $league->id) }}" class="btn btn-primary">
                     Partner Contribution
                 </a>

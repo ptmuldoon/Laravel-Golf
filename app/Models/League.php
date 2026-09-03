@@ -71,6 +71,26 @@ class League extends Model
         return $this->segments()->exists();
     }
 
+    /**
+     * Whether the season has finished playing.
+     *
+     * True once the league has a schedule, every match on it is completed, and
+     * the league's end date has passed. The end date is what keeps a partially
+     * built schedule — eight weeks generated and scored out of a planned
+     * sixteen — from reading as a finished season. Gates the public Season
+     * Recap link on the home page; the recap URL itself stays reachable so
+     * admins can preview it early.
+     */
+    public function isSeasonComplete(): bool
+    {
+        if ($this->end_date && $this->end_date->isFuture()) {
+            return false;
+        }
+
+        return $this->matches()->exists()
+            && !$this->matches()->where('status', '!=', 'completed')->exists();
+    }
+
     public function par3Winners()
     {
         return $this->hasMany(Par3Winner::class);
